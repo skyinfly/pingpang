@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OptionPresetKind {
+  LEVEL
+  PLAYER_COUNT
+}
+
+model User {
+  id               String                  @id @default(cuid())
+  phone            String                  @unique
+  nickname         String
+  city             String
+  level            String
+  creditScore      Int                     @default(100)
+  createdAt        DateTime                @default(now())
+  hostedMatches    Match[]                 @relation("HostedMatches")
+  threadMembership ChatThreadParticipant[]
+}
+
+model Venue {
+  id                String                  @id @default(cuid())
+  name              String
+  city              String
+  district          String?
+  distanceKm        Float
+  sortOrder         Int                     @default(0)
+  isActive          Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  courts            VenueCourt[]
+  availabilitySlots VenueAvailabilitySlot[]
+  matches           Match[]
+
+  @@index([isActive, sortOrder])
+}
+
+model VenueCourt {
+  id        String   @id @default(cuid())
+  venueId   String
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  matches   Match[]
+
+  @@index([venueId, isActive, sortOrder])
+}
+
+model VenueAvailabilitySlot {
+  id        String   @id @default(cuid())
+  venueId   String
+  label     String
+  startTime Int
+  endTime   Int
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  matches   Match[]
+
+  @@index([venueId, isActive, sortOrder])
+}
+
+model OptionPreset {
+  id        String           @id @default(cuid())
+  kind      OptionPresetKind
+  value     String
+  label     String
+  sortOrder Int              @default(0)
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([kind, isActive, sortOrder])
+}
+
+model Match {
+  id              String                 @id
+  title           String
+  venueName       String
+  venueId         String?
+  courtId         String?
+  slotId          String?
+  startTime       DateTime
+  city            String
+  level           String
+  maxPlayers      Int
+  openSlots       Int
+  hostUserId      String
+  hostCreditScore Int
+  distanceKm      Float
+  matchRate       Int
+  createdAt       DateTime               @default(now())
+  hostUser        User                   @relation("HostedMatches", fields: [hostUserId], references: [id], onDelete: Cascade)
+  venue           Venue?                 @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  court           VenueCourt?            @relation(fields: [courtId], references: [id], onDelete: SetNull)
+  slot            VenueAvailabilitySlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  applications    MatchApplication[]
+  thread          ChatThread?
+
+  @@index([venueId])
+  @@index([courtId])
+  @@index([slotId])
+}
+
+model MatchApplication {
+  id             String   @id @default(cuid())
+  matchId        String
+  userId         String
+  status         String
+  decisionReason String?
+  createdAt      DateTime @default(now())
+  match          Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  matchId    String
+  reviewerId String
+  revieweeId String
+  score      Int
+  tags       String[]
+  createdAt  DateTime @default(now())
+
+  @@index([matchId])
+  @@index([revieweeId])
+}
+
+model ChatThread {
+  id                    String                  @id
+  matchId               String                  @unique
+  title                 String
+  venueName             String
+  scheduledAt           DateTime
+  hostUserId            String
+  status                String                  @default("active")
+  latestMessagePreview  String
+  latestMessageAt       DateTime
+  lastMessageSenderId   String?
+  lastMessageSenderName String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  match                 Match                   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  participants          ChatThreadParticipant[]
+  messages              Message[]
+}
+
+model ChatThreadParticipant {
+  id         String     @id @default(cuid())
+  threadId   String
+  userId     String
+  role       String
+  joinedAt   DateTime   @default(now())
+  lastReadAt DateTime?
+  thread     ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([userId, threadId])
+}
+
+model Message {
+  id         String      @id @default(cuid())
+  userId     String
+  kind       String
+  title      String
+  content    String
+  senderId   String?
+  senderName String?
+  isRead     Boolean     @default(false)
+  status     String?
+  matchId    String?
+  threadId   String?
+  createdAt  DateTime    @default(now())
+  thread     ChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, kind, isRead])
+  @@index([userId, matchId, kind])
+  @@index([userId, threadId, kind])
+}

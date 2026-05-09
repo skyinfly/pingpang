@@ -1,0 +1,84 @@
+﻿{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "navigationBarBackgroundColor": "#FFF9F1",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/square/index",
+      "style": {
+        "navigationBarTitleText": "约局广场"
+      }
+    },
+    {
+      "path": "pages/match-detail/index",
+      "style": {
+        "navigationBarTitleText": "球局详情"
+      }
+    },
+    {
+      "path": "pages/messages/index",
+      "style": {
+        "navigationBarTitleText": "消息"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/create-match/index",
+      "style": {
+        "navigationBarTitleText": "发布约局"
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationBarTitleText": "局内聊天"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#FFF9F1",
+    "navigationBarBackgroundColor": "#FFF9F1",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "乒乓约球"
+  },
+  "tabBar": {
+    "color": "#7A8699",
+    "selectedColor": "#FF6A3D",
+    "backgroundColor": "#FFF9F1",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/square/index",
+        "text": "广场"
+      },
+      {
+        "pagePath": "pages/messages/index",
+        "text": "消息"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  }
+}

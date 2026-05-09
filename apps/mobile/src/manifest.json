@@ -1,0 +1,22 @@
+{
+  "name": "乒乓约球",
+  "appid": "__UNI__PINGPANG",
+  "description": "乒乓约球移动端 MVP",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true
+  },
+  "h5": {
+    "title": "乒乓约球"
+  },
+  "mp-weixin": {
+    "appid": "wx-pingpang-dev",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    }
+  }
+}

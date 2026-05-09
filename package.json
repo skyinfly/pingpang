@@ -1,0 +1,29 @@
+{
+  "name": "pingpang",
+  "private": true,
+  "packageManager": "pnpm@10.8.0",
+  "scripts": {
+    "dev:mobile": "pnpm --filter @pingpang/mobile dev:h5",
+    "dev:admin": "pnpm --filter @pingpang/admin dev",
+    "dev:mobile:api": "node tools/mobile/run-mobile-with-api.mjs --platform h5 --command dev",
+    "preview:up": "node tools/mobile/start-preview-stack.mjs",
+    "preview:down": "node tools/mobile/stop-preview-stack.mjs",
+    "preview:shots": "node tools/mobile/capture-h5-routes.mjs",
+    "dev:miniapp": "pnpm --filter @pingpang/mobile dev:mp-weixin",
+    "dev:miniapp:api": "node tools/mobile/run-mobile-with-api.mjs --platform mp-weixin --command dev",
+    "dev:api": "pnpm --filter @pingpang/api start:dev",
+    "db:init:local": "powershell -ExecutionPolicy Bypass -File tools/postgres/init-local-postgres.ps1",
+    "db:start:local": "powershell -ExecutionPolicy Bypass -File tools/postgres/start-local-postgres.ps1",
+    "db:stop:local": "powershell -ExecutionPolicy Bypass -File tools/postgres/stop-local-postgres.ps1",
+    "db:status:local": "powershell -ExecutionPolicy Bypass -File tools/postgres/status-local-postgres.ps1",
+    "test": "node tools/verify-workspace.mjs",
+    "build": "node tools/verify-workspace.mjs",
+    "test:admin": "pnpm --filter @pingpang/admin test",
+    "build:admin": "pnpm --filter @pingpang/admin build",
+    "build:miniapp": "pnpm --filter @pingpang/mobile build:mp-weixin",
+    "build:miniapp:api": "node tools/mobile/run-mobile-with-api.mjs --platform mp-weixin --command build",
+    "build:api": "pnpm --filter @pingpang/api build",
+    "start:api:prod": "pnpm --filter @pingpang/api start:prod",
+    "release:verify": "node tools/release/verify-release.mjs"
+  }
+}

@@ -1,0 +1,9 @@
+@use '@/theme/tokens.scss' as *;
+
+$uni-color-primary: $color-primary;
+$uni-color-success: $color-success;
+$uni-color-warning: $color-warning;
+$uni-text-color: $color-ink;
+$uni-text-color-placeholder: $color-muted;
+$uni-bg-color: $color-bg;
+$uni-border-radius-lg: $radius-card;

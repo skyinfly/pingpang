@@ -1,0 +1,40 @@
+{
+  "name": "@pingpang/api",
+  "private": true,
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@prisma/client": "6.6.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/testing": "^11.1.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.6.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "prisma": "6.6.0",
+    "supertest": "^7.1.1",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "start:dev": "nest start --watch",
+    "test": "jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "prisma:generate": "node ./scripts/prisma-with-env.mjs generate",
+    "db:push": "node ./scripts/prisma-with-env.mjs db push",
+    "db:migrate": "node ./scripts/prisma-with-env.mjs migrate dev",
+    "db:reset": "node ./scripts/prisma-with-env.mjs migrate reset --force --skip-generate",
+    "db:seed": "ts-node prisma/seed.ts",
+    "build": "nest build",
+    "start:prod": "node dist/main.js",
+    "db:migrate:deploy": "node ./scripts/prisma-with-env.mjs migrate deploy"
+  }
+}

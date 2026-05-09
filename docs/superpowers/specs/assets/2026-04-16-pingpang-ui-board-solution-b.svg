@@ -1,0 +1,358 @@
+<svg width="1680" height="1640" viewBox="0 0 1680 1640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="boardBg" x1="120" y1="80" x2="1520" y2="1560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4EEE5"/>
+      <stop offset="0.45" stop-color="#F8F4EC"/>
+      <stop offset="1" stop-color="#E5EEF6"/>
+    </linearGradient>
+    <linearGradient id="orangeBurst" x1="0" y1="0" x2="420" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8557"/>
+      <stop offset="1" stop-color="#FFB067"/>
+    </linearGradient>
+    <linearGradient id="navyBurst" x1="0" y1="0" x2="420" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14243A"/>
+      <stop offset="1" stop-color="#284A68"/>
+    </linearGradient>
+    <linearGradient id="mintBurst" x1="0" y1="0" x2="420" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#CDEED8"/>
+      <stop offset="1" stop-color="#8FE3BF"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(290 240) rotate(63) scale(260 240)">
+      <stop stop-color="#FFD1A8"/>
+      <stop offset="1" stop-color="#FFD1A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1370 1180) rotate(63) scale(280 250)">
+      <stop stop-color="#A4D6FF"/>
+      <stop offset="1" stop-color="#A4D6FF" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="2" fill="#D8E3EC"/>
+    </pattern>
+    <filter id="shadow" x="-40" y="-40" width="520" height="720" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#203247" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .title { font-family: "Avenir Next", "Segoe UI", "Noto Sans SC", sans-serif; font-weight: 700; fill: #102033; }
+      .body { font-family: "Avenir Next", "Segoe UI", "Noto Sans SC", sans-serif; font-weight: 500; fill: #3D4C5F; }
+      .muted { font-family: "Avenir Next", "Segoe UI", "Noto Sans SC", sans-serif; font-weight: 500; fill: #6D7B8D; }
+      .small { font-size: 16px; }
+      .label { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
+    </style>
+  </defs>
+
+  <rect width="1680" height="1640" rx="36" fill="url(#boardBg)"/>
+  <rect x="40" y="40" width="1600" height="1560" rx="32" fill="url(#dots)" opacity="0.35"/>
+  <circle cx="290" cy="240" r="260" fill="url(#glowA)"/>
+  <circle cx="1370" cy="1180" r="280" fill="url(#glowB)"/>
+
+  <text x="84" y="108" class="title" font-size="44">约球 Web UI 稿</text>
+  <text x="84" y="146" class="body" font-size="20">方案 B · 移动端首发 · 高保真视觉方向板</text>
+  <text x="84" y="178" class="muted" font-size="16">关键词：附近、成局率、可信赖、轻竞技</text>
+
+  <g transform="translate(1200 88)">
+    <rect width="360" height="112" rx="28" fill="#FFF9F1" stroke="#F1E0CC"/>
+    <text x="28" y="34" class="muted label">Palette</text>
+    <circle cx="48" cy="74" r="16" fill="#FF6A3D"/>
+    <circle cx="108" cy="74" r="16" fill="#0F1C2E"/>
+    <circle cx="168" cy="74" r="16" fill="#2FBF71"/>
+    <circle cx="228" cy="74" r="16" fill="#F5A623"/>
+    <circle cx="288" cy="74" r="16" fill="#F7F1E7" stroke="#E5D7C4"/>
+    <text x="28" y="103" class="muted small">活力橙 / 深海军蓝 / 履约绿 / 警示黄 / 暖米白</text>
+  </g>
+
+  <!-- Phone 1: Home -->
+  <g transform="translate(60 220)" filter="url(#shadow)">
+    <rect width="420" height="620" rx="42" fill="#111A29"/>
+    <rect x="14" y="14" width="392" height="592" rx="34" fill="#FFF8F2"/>
+    <rect x="158" y="24" width="104" height="18" rx="9" fill="#172436"/>
+
+    <rect x="28" y="58" width="336" height="170" rx="28" fill="url(#orangeBurst)"/>
+    <circle cx="332" cy="92" r="20" fill="#FFD4BE" fill-opacity="0.28"/>
+    <circle cx="94" cy="188" r="72" fill="#FFFFFF" fill-opacity="0.12"/>
+    <text x="48" y="95" class="small" fill="#FFF3E8" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-weight:600;">上海 · 徐汇</text>
+    <text x="48" y="138" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:30px;font-weight:800;fill:#FFFFFF;">今晚 20:00 前</text>
+    <text x="48" y="172" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:30px;font-weight:800;fill:#FFFFFF;">快速成局</text>
+    <rect x="48" y="189" width="106" height="30" rx="15" fill="#FFFFFF" fill-opacity="0.18"/>
+    <text x="66" y="209" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:14px;font-weight:700;fill:#FFF9F3;">同区匹配优先</text>
+    <rect x="164" y="189" width="122" height="30" rx="15" fill="#FFFFFF" fill-opacity="0.18"/>
+    <text x="183" y="209" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:14px;font-weight:700;fill:#FFF9F3;">信用分过滤</text>
+
+    <text x="28" y="264" class="title" font-size="18">为你推荐</text>
+    <g transform="translate(28 280)">
+      <rect width="364" height="108" rx="24" fill="#FFFFFF"/>
+      <rect x="18" y="16" width="64" height="64" rx="20" fill="#12263D"/>
+      <circle cx="50" cy="48" r="18" fill="#FFB067"/>
+      <text x="98" y="38" class="title" font-size="20">漕河泾速约局</text>
+      <text x="98" y="62" class="body" font-size="15">今晚 19:30 · 剩 1 位 · 2.4km</text>
+      <text x="98" y="84" class="muted" font-size="14">推荐原因：水平匹配 91%</text>
+      <rect x="264" y="26" width="82" height="40" rx="20" fill="#0F1C2E"/>
+      <text x="287" y="51" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:16px;font-weight:700;fill:#FFFFFF;">加入</text>
+    </g>
+
+    <text x="28" y="428" class="title" font-size="18">附近即将开打</text>
+    <g transform="translate(28 444)">
+      <rect width="176" height="112" rx="24" fill="#FFF0E7"/>
+      <text x="18" y="34" class="title" font-size="18">华泾馆 18:40</text>
+      <text x="18" y="58" class="body" font-size="14">2 缺 1 · 新手友好</text>
+      <text x="18" y="82" class="muted" font-size="14">步行 11 分钟</text>
+      <rect x="18" y="88" width="72" height="12" rx="6" fill="#FF6A3D" fill-opacity="0.24"/>
+    </g>
+    <g transform="translate(216 444)">
+      <rect width="176" height="112" rx="24" fill="#EEF5FB"/>
+      <text x="18" y="34" class="title" font-size="18">龙华馆 20:15</text>
+      <text x="18" y="58" class="body" font-size="14">信用 98 · 强度中等</text>
+      <text x="18" y="82" class="muted" font-size="14">成局率预计 87%</text>
+      <rect x="18" y="88" width="104" height="12" rx="6" fill="#0F1C2E" fill-opacity="0.18"/>
+    </g>
+
+    <rect x="28" y="570" width="364" height="22" rx="11" fill="#FFF3EA"/>
+    <circle cx="64" cy="581" r="6" fill="#FF6A3D"/>
+    <circle cx="154" cy="581" r="6" fill="#C9D4E0"/>
+    <circle cx="244" cy="581" r="6" fill="#C9D4E0"/>
+    <circle cx="334" cy="581" r="6" fill="#C9D4E0"/>
+  </g>
+  <text x="205" y="876" class="title" font-size="24">首页</text>
+
+  <!-- Phone 2: Square -->
+  <g transform="translate(630 220)" filter="url(#shadow)">
+    <rect width="420" height="620" rx="42" fill="#111A29"/>
+    <rect x="14" y="14" width="392" height="592" rx="34" fill="#F8F5F0"/>
+    <rect x="158" y="24" width="104" height="18" rx="9" fill="#172436"/>
+
+    <text x="34" y="82" class="title" font-size="28">约局广场</text>
+    <rect x="292" y="58" width="94" height="38" rx="19" fill="#FFFFFF"/>
+    <text x="320" y="82" class="body" font-size="15">筛选</text>
+
+    <rect x="34" y="112" width="72" height="34" rx="17" fill="#0F1C2E"/>
+    <text x="54" y="134" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:14px;font-weight:700;fill:#FFFFFF;">2km</text>
+    <rect x="116" y="112" width="88" height="34" rx="17" fill="#FFFFFF"/>
+    <text x="144" y="134" class="body" font-size="14">今晚</text>
+    <rect x="214" y="112" width="88" height="34" rx="17" fill="#FFFFFF"/>
+    <text x="237" y="134" class="body" font-size="14">中级</text>
+    <rect x="312" y="112" width="74" height="34" rx="17" fill="#FFFFFF"/>
+    <text x="334" y="134" class="body" font-size="14">可加</text>
+
+    <text x="34" y="182" class="muted" font-size="14">按 成局概率 排序</text>
+
+    <g transform="translate(34 204)">
+      <rect width="352" height="118" rx="26" fill="#FFFFFF"/>
+      <rect x="18" y="18" width="74" height="82" rx="22" fill="#FFF1E7"/>
+      <text x="37" y="54" class="title" font-size="22">19:30</text>
+      <text x="36" y="78" class="muted" font-size="14">今晚</text>
+      <text x="110" y="44" class="title" font-size="20">漕宝馆 4 号台</text>
+      <text x="110" y="68" class="body" font-size="14">2 缺 1 · 2.1km · 主理人信用 97</text>
+      <text x="110" y="92" class="muted" font-size="14">推荐理由：你近 7 天常在附近活动</text>
+      <rect x="262" y="34" width="72" height="38" rx="19" fill="#FF6A3D"/>
+      <text x="282" y="58" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:15px;font-weight:700;fill:#FFFFFF;">申请</text>
+    </g>
+
+    <g transform="translate(34 338)">
+      <rect width="352" height="118" rx="26" fill="#FFFFFF"/>
+      <rect x="18" y="18" width="74" height="82" rx="22" fill="#EAF3FB"/>
+      <text x="37" y="54" class="title" font-size="22">20:10</text>
+      <text x="36" y="78" class="muted" font-size="14">今晚</text>
+      <text x="110" y="44" class="title" font-size="20">龙华馆 补位局</text>
+      <text x="110" y="68" class="body" font-size="14">1 缺 1 · 3.2km · 强度中等</text>
+      <text x="110" y="92" class="muted" font-size="14">推荐理由：履约记录稳定，适合补位</text>
+      <rect x="250" y="34" width="84" height="38" rx="19" fill="#0F1C2E"/>
+      <text x="272" y="58" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:15px;font-weight:700;fill:#FFFFFF;">抢位</text>
+    </g>
+
+    <g transform="translate(34 472)">
+      <rect width="352" height="86" rx="26" fill="#FFF0E4"/>
+      <text x="20" y="38" class="title" font-size="18">没有更近的局了</text>
+      <text x="20" y="62" class="body" font-size="14">试试一键发起，系统会帮你优先推给附近球友</text>
+      <circle cx="318" cy="43" r="18" fill="#FF6A3D"/>
+      <text x="311" y="49" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:20px;font-weight:800;fill:#FFFFFF;">+</text>
+    </g>
+  </g>
+  <text x="760" y="876" class="title" font-size="24">约局广场</text>
+
+  <!-- Phone 3: Detail -->
+  <g transform="translate(1200 220)" filter="url(#shadow)">
+    <rect width="420" height="620" rx="42" fill="#111A29"/>
+    <rect x="14" y="14" width="392" height="592" rx="34" fill="#F6F8FB"/>
+    <rect x="158" y="24" width="104" height="18" rx="9" fill="#172436"/>
+
+    <rect x="26" y="58" width="368" height="168" rx="28" fill="url(#navyBurst)"/>
+    <circle cx="314" cy="116" r="72" fill="#8FC7FF" fill-opacity="0.12"/>
+    <text x="48" y="96" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:15px;font-weight:600;fill:#DCEBFA;">约局详情</text>
+    <text x="48" y="138" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:28px;font-weight:800;fill:#FFFFFF;">漕河泾晚场补位</text>
+    <text x="48" y="170" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:15px;font-weight:600;fill:#DCEBFA;">徐汇区 · 2.1km · 地图可达</text>
+    <rect x="48" y="184" width="94" height="30" rx="15" fill="#FFFFFF" fill-opacity="0.14"/>
+    <text x="67" y="204" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:14px;font-weight:700;fill:#FFFFFF;">成局率 87%</text>
+
+    <g transform="translate(26 244)">
+      <rect width="368" height="94" rx="26" fill="#FFFFFF"/>
+      <text x="20" y="36" class="title" font-size="18">今晚 19:30 - 21:00</text>
+      <text x="20" y="62" class="body" font-size="14">4 人局 · 当前 3 人 · 中级强度 · 线下 AA</text>
+      <text x="20" y="84" class="muted" font-size="14">说明：不拖节奏，晚到超过 15 分钟自动让位</text>
+    </g>
+
+    <g transform="translate(26 354)">
+      <rect width="176" height="122" rx="24" fill="#FFFFFF"/>
+      <text x="18" y="32" class="muted" font-size="13">主理人</text>
+      <circle cx="48" cy="70" r="22" fill="#FFB067"/>
+      <text x="82" y="66" class="title" font-size="18">Kevin</text>
+      <text x="82" y="90" class="body" font-size="14">信用 97 · 爽约 0</text>
+    </g>
+    <g transform="translate(218 354)">
+      <rect width="176" height="122" rx="24" fill="#FFFFFF"/>
+      <text x="18" y="32" class="muted" font-size="13">已加入成员</text>
+      <circle cx="42" cy="74" r="18" fill="#C2D9F2"/>
+      <circle cx="82" cy="74" r="18" fill="#FFD4BE"/>
+      <circle cx="122" cy="74" r="18" fill="#BFE6C9"/>
+      <circle cx="150" cy="74" r="18" fill="#FFF8F2" stroke="#CBD7E4"/>
+      <text x="18" y="106" class="body" font-size="14">还差 1 人成局</text>
+    </g>
+
+    <g transform="translate(26 492)">
+      <rect width="368" height="74" rx="24" fill="#EAF3FB"/>
+      <text x="18" y="31" class="title" font-size="17">推荐给你</text>
+      <text x="18" y="54" class="body" font-size="14">水平接近 + 距离近 + 历史响应快</text>
+      <rect x="260" y="18" width="90" height="38" rx="19" fill="#FF6A3D"/>
+      <text x="286" y="42" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:15px;font-weight:700;fill:#FFFFFF;">申请加入</text>
+    </g>
+  </g>
+  <text x="1328" y="876" class="title" font-size="24">约局详情</text>
+
+  <!-- Phone 4: Create -->
+  <g transform="translate(60 930)" filter="url(#shadow)">
+    <rect width="420" height="620" rx="42" fill="#111A29"/>
+    <rect x="14" y="14" width="392" height="592" rx="34" fill="#FFF9F2"/>
+    <rect x="158" y="24" width="104" height="18" rx="9" fill="#172436"/>
+
+    <text x="34" y="82" class="title" font-size="28">创建约局</text>
+    <text x="34" y="110" class="muted" font-size="14">1 分钟完成发布，系统将自动计算成局率</text>
+
+    <rect x="34" y="132" width="76" height="28" rx="14" fill="#0F1C2E"/>
+    <text x="54" y="151" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:13px;font-weight:700;fill:#FFFFFF;">基础信息</text>
+    <rect x="120" y="132" width="76" height="28" rx="14" fill="#FFFFFF"/>
+    <text x="142" y="151" class="body" font-size="13">规则</text>
+    <rect x="206" y="132" width="76" height="28" rx="14" fill="#FFFFFF"/>
+    <text x="222" y="151" class="body" font-size="13">预览</text>
+
+    <g transform="translate(34 180)">
+      <rect width="352" height="214" rx="28" fill="#FFFFFF"/>
+      <text x="20" y="36" class="muted" font-size="13">运动</text>
+      <rect x="20" y="48" width="96" height="42" rx="18" fill="#FFEEE3"/>
+      <text x="48" y="74" class="title" font-size="16">乒乓球</text>
+      <text x="136" y="36" class="muted" font-size="13">时间</text>
+      <rect x="136" y="48" width="196" height="42" rx="18" fill="#F5F7FA"/>
+      <text x="156" y="74" class="body" font-size="15">今晚 19:30</text>
+      <text x="20" y="120" class="muted" font-size="13">地点</text>
+      <rect x="20" y="132" width="312" height="42" rx="18" fill="#F5F7FA"/>
+      <text x="40" y="158" class="body" font-size="15">漕宝馆 · 4 号台</text>
+      <text x="20" y="204" class="muted" font-size="13">人数 / 水平</text>
+      <rect x="20" y="216" width="146" height="42" rx="18" fill="#F5F7FA"/>
+      <text x="40" y="242" class="body" font-size="15">4 人局</text>
+      <rect x="186" y="216" width="146" height="42" rx="18" fill="#F5F7FA"/>
+      <text x="206" y="242" class="body" font-size="15">中级偏上</text>
+    </g>
+
+    <g transform="translate(34 412)">
+      <rect width="352" height="94" rx="26" fill="url(#mintBurst)"/>
+      <text x="20" y="36" class="title" font-size="18">预计成局率 82%</text>
+      <text x="20" y="62" class="body" font-size="14">推荐 19:30 - 20:30 之间发起，附近活跃球友更多</text>
+    </g>
+
+    <rect x="34" y="528" width="126" height="48" rx="24" fill="#FFFFFF"/>
+    <text x="72" y="558" class="body" font-size="16">草稿</text>
+    <rect x="170" y="528" width="216" height="48" rx="24" fill="#FF6A3D"/>
+    <text x="242" y="558" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:17px;font-weight:800;fill:#FFFFFF;">发布约局</text>
+  </g>
+  <text x="185" y="1586" class="title" font-size="24">创建约局</text>
+
+  <!-- Phone 5: Messages -->
+  <g transform="translate(630 930)" filter="url(#shadow)">
+    <rect width="420" height="620" rx="42" fill="#111A29"/>
+    <rect x="14" y="14" width="392" height="592" rx="34" fill="#F7F8FC"/>
+    <rect x="158" y="24" width="104" height="18" rx="9" fill="#172436"/>
+
+    <text x="34" y="82" class="title" font-size="28">消息中心</text>
+    <rect x="34" y="108" width="102" height="34" rx="17" fill="#0F1C2E"/>
+    <text x="58" y="130" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:14px;font-weight:700;fill:#FFFFFF;">系统通知</text>
+    <rect x="146" y="108" width="88" height="34" rx="17" fill="#FFFFFF"/>
+    <text x="174" y="130" class="body" font-size="14">聊天</text>
+    <rect x="244" y="108" width="116" height="34" rx="17" fill="#FFFFFF"/>
+    <text x="274" y="130" class="body" font-size="14">补位邀请</text>
+
+    <g transform="translate(34 166)">
+      <rect width="352" height="92" rx="24" fill="#FFFFFF"/>
+      <circle cx="28" cy="30" r="8" fill="#2FBF71"/>
+      <text x="50" y="34" class="title" font-size="18">你的申请已通过</text>
+      <text x="20" y="60" class="body" font-size="14">漕河泾速约局 · 今晚 19:30 开打</text>
+      <text x="20" y="82" class="muted" font-size="13">2 分钟前</text>
+    </g>
+
+    <g transform="translate(34 274)">
+      <rect width="352" height="92" rx="24" fill="#FFFFFF"/>
+      <circle cx="28" cy="30" r="8" fill="#F5A623"/>
+      <text x="50" y="34" class="title" font-size="18">补位邀请</text>
+      <text x="20" y="60" class="body" font-size="14">龙华馆 20:10 缺 1 位，匹配度 89%</text>
+      <rect x="232" y="44" width="52" height="30" rx="15" fill="#FFF0E4"/>
+      <text x="247" y="63" class="body" font-size="13">拒绝</text>
+      <rect x="292" y="44" width="42" height="30" rx="15" fill="#0F1C2E"/>
+      <text x="303" y="63" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:13px;font-weight:700;fill:#FFFFFF;">接</text>
+    </g>
+
+    <g transform="translate(34 382)">
+      <rect width="352" height="92" rx="24" fill="#FFFFFF"/>
+      <circle cx="28" cy="30" r="8" fill="#FF6A3D"/>
+      <text x="50" y="34" class="title" font-size="18">开打提醒</text>
+      <text x="20" y="60" class="body" font-size="14">距离开打还有 30 分钟，请确认是否准时到场</text>
+      <text x="20" y="82" class="muted" font-size="13">请尽量避免爽约影响信用分</text>
+    </g>
+
+    <g transform="translate(34 490)">
+      <rect width="352" height="68" rx="24" fill="#EEF5FB"/>
+      <text x="20" y="30" class="title" font-size="17">未读聊天 3 条</text>
+      <text x="20" y="52" class="body" font-size="14">队友正在确认是否提前半小时热身</text>
+    </g>
+  </g>
+  <text x="768" y="1586" class="title" font-size="24">消息中心</text>
+
+  <!-- Phone 6: Profile -->
+  <g transform="translate(1200 930)" filter="url(#shadow)">
+    <rect width="420" height="620" rx="42" fill="#111A29"/>
+    <rect x="14" y="14" width="392" height="592" rx="34" fill="#FFF9F1"/>
+    <rect x="158" y="24" width="104" height="18" rx="9" fill="#172436"/>
+
+    <rect x="26" y="58" width="368" height="174" rx="30" fill="url(#orangeBurst)"/>
+    <circle cx="96" cy="132" r="42" fill="#FFFFFF" fill-opacity="0.22"/>
+    <circle cx="96" cy="132" r="30" fill="#FFE2D2"/>
+    <text x="150" y="124" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:28px;font-weight:800;fill:#FFFFFF;">Rika</text>
+    <text x="150" y="154" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:15px;font-weight:600;fill:#FFF3EB;">信用 96 · 连续 12 场到场</text>
+    <rect x="150" y="174" width="84" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.18"/>
+    <text x="174" y="193" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:13px;font-weight:700;fill:#FFFFFF;">中级</text>
+    <rect x="246" y="174" width="94" height="28" rx="14" fill="#FFFFFF" fill-opacity="0.18"/>
+    <text x="268" y="193" style="font-family:'Avenir Next','Segoe UI','Noto Sans SC',sans-serif;font-size:13px;font-weight:700;fill:#FFFFFF;">徐汇活跃</text>
+
+    <g transform="translate(26 250)">
+      <rect width="176" height="108" rx="24" fill="#FFFFFF"/>
+      <text x="20" y="32" class="muted" font-size="13">本月开打</text>
+      <text x="20" y="76" class="title" font-size="34">18</text>
+      <text x="76" y="76" class="body" font-size="15">场</text>
+    </g>
+    <g transform="translate(218 250)">
+      <rect width="176" height="108" rx="24" fill="#FFFFFF"/>
+      <text x="20" y="32" class="muted" font-size="13">成局率</text>
+      <text x="20" y="76" class="title" font-size="34">91%</text>
+    </g>
+
+    <g transform="translate(26 376)">
+      <rect width="368" height="172" rx="28" fill="#FFFFFF"/>
+      <text x="20" y="34" class="title" font-size="18">快捷入口</text>
+      <rect x="20" y="52" width="328" height="36" rx="18" fill="#F6F8FB"/>
+      <text x="38" y="75" class="body" font-size="14">我发起的约局</text>
+      <rect x="20" y="96" width="328" height="36" rx="18" fill="#F6F8FB"/>
+      <text x="38" y="119" class="body" font-size="14">我参与的约局</text>
+      <rect x="20" y="140" width="328" height="36" rx="18" fill="#FFF0E4"/>
+      <text x="38" y="163" class="body" font-size="14">待处理申请（2）</text>
+    </g>
+
+    <rect x="26" y="566" width="368" height="20" rx="10" fill="#FFF0E4"/>
+    <rect x="26" y="566" width="250" height="20" rx="10" fill="#2FBF71"/>
+  </g>
+  <text x="1364" y="1586" class="title" font-size="24">我的</text>
+</svg>
