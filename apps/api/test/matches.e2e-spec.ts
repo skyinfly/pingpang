@@ -454,6 +454,42 @@ describe('Matches listing', () => {
       .expect(409);
   });
 
+  it('rejects creating a match whose maxPlayers is out of bounds via global validation', async () => {
+    const hostToken = await login('13900139000');
+    await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '越界测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId: 'venue-slot-2',
+        level: 'intermediate',
+        maxPlayers: 99,
+      })
+      .expect(400);
+  });
+
+  it('strips unknown fields from match creation payloads via validation whitelist', async () => {
+    const hostToken = await login('13900139000');
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '禁字段局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+        sneakyAdminFlag: true,
+      })
+      .expect(400);
+  });
+
   it('cancels a hosted match, fans out system messages, and hides it from the home feed', async () => {
     const hostToken = await login('13900139000');
     const applicantToken = await login();
