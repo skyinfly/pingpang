@@ -500,6 +500,52 @@ describe('Admin API', () => {
     expect(matchAfter?.openSlots).toBe(2);
   });
 
+  it('lists reviews with reviewer/reviewee and match context', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/admin/reviews')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+
+    expect(response.body.items.length).toBeGreaterThanOrEqual(2);
+    expect(response.body.items[0]).toEqual(
+      expect.objectContaining({
+        matchId: expect.any(String),
+        matchTitle: expect.any(String),
+        reviewerNickname: expect.any(String),
+        revieweeNickname: expect.any(String),
+        score: expect.any(Number),
+      }),
+    );
+  });
+
+  it('filters reviews by reviewee and score range', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/admin/reviews?revieweeId=user-13800138000&minScore=5&maxScore=5')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+
+    expect(response.body.items.every((item: { score: number }) => item.score === 5)).toBe(true);
+    expect(
+      response.body.items.every((item: { revieweeId: string }) => item.revieweeId === 'user-13800138000'),
+    ).toBe(true);
+  });
+
+  it('deletes a review and reverses the credit score delta', async () => {
+    const before = await prisma.user.findUniqueOrThrow({ where: { id: 'user-13800138000' } });
+    const positiveReview = await prisma.review.findFirstOrThrow({
+      where: { revieweeId: 'user-13800138000', score: { gte: 4 } },
+    });
+
+    await request(app.getHttpServer())
+      .delete(`/admin/reviews/${positiveReview.id}`)
+      .set('X-Admin-Token', adminToken)
+      .expect(200, { ok: true, id: positiveReview.id });
+
+    expect(await prisma.review.findUnique({ where: { id: positiveReview.id } })).toBeNull();
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: 'user-13800138000' } });
+    expect(after.creditScore).toBe(Math.max(0, before.creditScore - 1));
+  });
+
   it('cancels a match via admin and notifies pending applicants', async () => {
     const applicantToken = await loginAs('13800138000');
     await request(app.getHttpServer())

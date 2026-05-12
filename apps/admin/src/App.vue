@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import {
   AdminApplicationRow,
   AdminMatchRow,
+  AdminReviewRow,
   AdminSummary,
   AdminUserRow,
   AdminVenueCourt,
@@ -13,7 +14,7 @@ import {
 } from './services/admin-api';
 import { DEFAULT_ADMIN_TOKEN, getStoredAdminToken, saveAdminToken } from './services/admin-token';
 
-type TabKey = 'applications' | 'matches' | 'users' | 'venues';
+type TabKey = 'applications' | 'matches' | 'users' | 'venues' | 'reviews';
 type EditorState = {
   resource: TabKey;
   id?: string;
@@ -34,6 +35,8 @@ const matches = ref<AdminMatchRow[]>([]);
 const users = ref<AdminUserRow[]>([]);
 const venues = ref<AdminVenueRow[]>([]);
 const applications = ref<AdminApplicationRow[]>([]);
+const reviews = ref<AdminReviewRow[]>([]);
+const deletingReviewId = ref<string | null>(null);
 const editor = ref<EditorState | null>(null);
 const form = ref<Record<string, string | number | boolean>>({});
 const expandedVenueId = ref<string | null>(null);
@@ -101,12 +104,13 @@ async function loadDashboard() {
   errorMessage.value = '';
 
   try {
-    const [summaryPayload, matchPayload, userPayload, venuePayload, applicationPayload] = await Promise.all([
+    const [summaryPayload, matchPayload, userPayload, venuePayload, applicationPayload, reviewPayload] = await Promise.all([
       api.value.getSummary(),
       api.value.listMatches(),
       api.value.listUsers(),
       api.value.listVenues(),
       api.value.listApplications('pending'),
+      api.value.listReviews(),
     ]);
 
     summary.value = summaryPayload;
@@ -114,6 +118,7 @@ async function loadDashboard() {
     users.value = userPayload.items;
     venues.value = venuePayload.items;
     applications.value = applicationPayload.items;
+    reviews.value = reviewPayload.items;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '后台数据请求失败，请稍后重试';
   } finally {
@@ -134,6 +139,25 @@ async function approveApplication(applicationId: string) {
     errorMessage.value = error instanceof Error ? error.message : '通过申请失败，请稍后再试';
   } finally {
     decidingApplicationId.value = null;
+  }
+}
+
+async function deleteReview(reviewId: string) {
+  if (!window.confirm('确认删除这条评价？删除后会回滚被评价用户的信用分变动。')) {
+    return;
+  }
+
+  deletingReviewId.value = reviewId;
+  errorMessage.value = '';
+
+  try {
+    await api.value.deleteReview(reviewId);
+    reviews.value = reviews.value.filter((review) => review.id !== reviewId);
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '删除评价失败，请稍后再试';
+  } finally {
+    deletingReviewId.value = null;
   }
 }
 
@@ -594,6 +618,14 @@ onMounted(() => {
             >
               球馆管理
             </button>
+            <button
+              data-testid="tab-reviews"
+              :class="{ active: activeTab === 'reviews' }"
+              type="button"
+              @click="switchTab('reviews')"
+            >
+              评价审核
+            </button>
           </div>
 
           <button
@@ -989,6 +1021,58 @@ onMounted(() => {
                   </td>
                 </tr>
               </template>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="activeTab === 'reviews'" class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>评分</th>
+                <th>被评价人</th>
+                <th>评价人</th>
+                <th>球局</th>
+                <th>标签</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="review in reviews" :key="review.id">
+                <td>
+                  <strong>{{ review.score }} 分</strong>
+                  <small v-if="review.score >= 4">正向</small>
+                  <small v-else>低评</small>
+                </td>
+                <td>
+                  <strong>{{ review.revieweeNickname }}</strong>
+                  <small>{{ review.revieweePhone }} · 信用 {{ review.revieweeCreditScore }}</small>
+                </td>
+                <td>
+                  {{ review.reviewerNickname }}
+                  <small>{{ review.reviewerPhone }}</small>
+                </td>
+                <td>
+                  <strong>{{ review.matchTitle }}</strong>
+                  <small>{{ review.matchVenueName }}</small>
+                </td>
+                <td>{{ review.tags.length ? review.tags.join('、') : '无' }}</td>
+                <td>{{ formatDateTime(review.createdAt) }}</td>
+                <td class="actions">
+                  <button
+                    type="button"
+                    :data-testid="`delete-review-${review.id}`"
+                    :disabled="deletingReviewId === review.id"
+                    @click="deleteReview(review.id)"
+                  >
+                    {{ deletingReviewId === review.id ? '处理中' : '删除并回滚' }}
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!reviews.length">
+                <td colspan="7" class="empty-row">还没有评价记录，球友评价后会出现在这里。</td>
+              </tr>
             </tbody>
           </table>
         </div>

@@ -39,7 +39,7 @@ describe('Admin App', () => {
               },
             ],
           },
-          'http://localhost:3000/admin/applications?status=pending': { items: [] },
+          'http://localhost:3000/admin/applications?status=pending': { items: [] }, 'http://localhost:3000/admin/reviews': { items: [] },
           'http://localhost:3000/admin/users': {
             items: [
               {
@@ -146,7 +146,7 @@ describe('Admin App', () => {
           reviews: 2,
         },
         'http://localhost:3000/admin/matches': { items: [] },
-        'http://localhost:3000/admin/applications?status=pending': { items: [] },
+        'http://localhost:3000/admin/applications?status=pending': { items: [] }, 'http://localhost:3000/admin/reviews': { items: [] },
         'http://localhost:3000/admin/users': { items: [] },
         'http://localhost:3000/admin/venues': {
           items: [
@@ -270,7 +270,7 @@ describe('Admin App', () => {
           reviews: 2,
         },
         'http://localhost:3000/admin/matches': { items: [] },
-        'http://localhost:3000/admin/applications?status=pending': { items: [] },
+        'http://localhost:3000/admin/applications?status=pending': { items: [] }, 'http://localhost:3000/admin/reviews': { items: [] },
         'http://localhost:3000/admin/users': { items: [] },
         'http://localhost:3000/admin/venues': { items: [baseVenue] },
       };
@@ -343,6 +343,7 @@ describe('Admin App', () => {
         },
         'http://localhost:3000/admin/matches': { items: [] },
         'http://localhost:3000/admin/applications?status=pending': { items: [pendingApplication] },
+        'http://localhost:3000/admin/reviews': { items: [] },
         'http://localhost:3000/admin/users': { items: [] },
         'http://localhost:3000/admin/venues': { items: [] },
       };

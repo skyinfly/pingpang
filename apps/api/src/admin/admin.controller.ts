@@ -112,6 +112,26 @@ export class AdminController {
     return this.adminService.listApplications(status);
   }
 
+  @Get('reviews')
+  listReviews(
+    @Query('revieweeId') revieweeId?: string,
+    @Query('reviewerId') reviewerId?: string,
+    @Query('minScore') minScore?: string,
+    @Query('maxScore') maxScore?: string,
+  ) {
+    return this.adminService.listReviews({
+      revieweeId,
+      reviewerId,
+      minScore: minScore !== undefined ? Number(minScore) : undefined,
+      maxScore: maxScore !== undefined ? Number(maxScore) : undefined,
+    });
+  }
+
+  @Delete('reviews/:id')
+  deleteReview(@Param('id') id: string) {
+    return this.adminService.deleteReview(id);
+  }
+
   @Post('applications/:id/approve')
   approveApplication(@Param('id') id: string) {
     return this.adminService.approveApplication(id);

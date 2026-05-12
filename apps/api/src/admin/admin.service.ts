@@ -123,6 +123,114 @@ export class AdminService {
     private readonly matchesService: MatchesService,
   ) {}
 
+  async listReviews(filters: { revieweeId?: string; reviewerId?: string; minScore?: number; maxScore?: number } = {}) {
+    const where: Prisma.ReviewWhereInput = {};
+
+    if (filters.revieweeId) {
+      where.revieweeId = filters.revieweeId;
+    }
+
+    if (filters.reviewerId) {
+      where.reviewerId = filters.reviewerId;
+    }
+
+    if (filters.minScore !== undefined || filters.maxScore !== undefined) {
+      where.score = {
+        gte: filters.minScore,
+        lte: filters.maxScore,
+      };
+    }
+
+    const reviews = await this.prisma.review.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const userIds = new Set<string>();
+    for (const review of reviews) {
+      userIds.add(review.reviewerId);
+      userIds.add(review.revieweeId);
+    }
+    const matchIds = [...new Set(reviews.map((review) => review.matchId))];
+
+    const [users, matches] = await Promise.all([
+      userIds.size
+        ? this.prisma.user.findMany({
+            where: { id: { in: [...userIds] } },
+            select: { id: true, nickname: true, phone: true, creditScore: true },
+          })
+        : Promise.resolve([]),
+      matchIds.length
+        ? this.prisma.match.findMany({
+            where: { id: { in: matchIds } },
+            select: { id: true, title: true, venueName: true, startTime: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const userMap = new Map(users.map((user) => [user.id, user]));
+    const matchMap = new Map(matches.map((match) => [match.id, match]));
+
+    return {
+      items: reviews.map((review) => {
+        const reviewer = userMap.get(review.reviewerId);
+        const reviewee = userMap.get(review.revieweeId);
+        const match = matchMap.get(review.matchId);
+
+        return {
+          id: review.id,
+          matchId: review.matchId,
+          matchTitle: match?.title ?? '已删除球局',
+          matchVenueName: match?.venueName ?? '',
+          matchStartTime: match?.startTime.toISOString() ?? null,
+          reviewerId: review.reviewerId,
+          reviewerNickname: reviewer?.nickname ?? '已删除用户',
+          reviewerPhone: reviewer?.phone ?? '',
+          revieweeId: review.revieweeId,
+          revieweeNickname: reviewee?.nickname ?? '已删除用户',
+          revieweePhone: reviewee?.phone ?? '',
+          revieweeCreditScore: reviewee?.creditScore ?? 0,
+          score: review.score,
+          tags: review.tags,
+          createdAt: review.createdAt.toISOString(),
+        };
+      }),
+    };
+  }
+
+  async deleteReview(reviewId: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new NotFoundException(`Review ${reviewId} not found`);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const reviewee = await tx.user.findUnique({
+        where: { id: review.revieweeId },
+        select: { creditScore: true },
+      });
+
+      await tx.review.delete({ where: { id: reviewId } });
+
+      if (reviewee) {
+        // Roll back the credit-score delta the review applied (+1 for >=4, -2 otherwise),
+        // clamped to [0, 100] so reversing an already-clamped delta cannot leak out of range.
+        const delta = review.score >= 4 ? -1 : 2;
+        const nextScore = Math.max(0, Math.min(100, reviewee.creditScore + delta));
+        await tx.user.update({
+          where: { id: review.revieweeId },
+          data: { creditScore: nextScore },
+        });
+      }
+    });
+
+    return { ok: true, id: reviewId };
+  }
+
   async cancelMatch(matchId: string, payload: unknown) {
     const body = payload === undefined || payload === null ? {} : asRecord(payload);
     await this.matchesService.cancelMatchAsAdmin(matchId, optionalString(body.reason));
