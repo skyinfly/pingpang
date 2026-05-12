@@ -106,8 +106,13 @@ function buildShanghaiSlotDate(slotStartMinutes: number, now = new Date()) {
   const { year, month, day } = getShanghaiDateParts(now);
   const hours = String(Math.floor(slotStartMinutes / 60)).padStart(2, '0');
   const minutes = String(slotStartMinutes % 60).padStart(2, '0');
+  const todayCandidate = new Date(`${year}-${month}-${day}T${hours}:${minutes}:00+08:00`);
 
-  return new Date(`${year}-${month}-${day}T${hours}:${minutes}:00+08:00`);
+  if (todayCandidate.getTime() > now.getTime()) {
+    return todayCandidate;
+  }
+
+  return new Date(todayCandidate.getTime() + 24 * 60 * 60 * 1000);
 }
 
 @Injectable()
@@ -570,6 +575,10 @@ export class AdminService {
 
     if (application.status !== 'pending') {
       throw new ConflictException(`application ${applicationId} is already ${application.status}`);
+    }
+
+    if (application.match.startTime.getTime() <= Date.now()) {
+      throw new ConflictException(`match ${application.matchId} has already started`);
     }
 
     if (application.match.openSlots <= 0) {

@@ -392,6 +392,108 @@ describe('Matches listing', () => {
     expect(participant).toBeNull();
   });
 
+  it('rejects applying to a match with no open slots', async () => {
+    const hostToken = await login('13900139000');
+    const applicantToken = await login();
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '满员测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+      })
+      .expect(201);
+
+    await prisma.match.update({
+      where: { id: createResponse.body.id },
+      data: { openSlots: 0 },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/applications`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(409);
+  });
+
+  it('rejects applying to a match that has already started', async () => {
+    const hostToken = await login('13900139000');
+    const applicantToken = await login();
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '过期测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+      })
+      .expect(201);
+
+    await prisma.match.update({
+      where: { id: createResponse.body.id },
+      data: { startTime: new Date(Date.now() - 60 * 60 * 1000) },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/applications`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(409);
+  });
+
+  it('rejects approving an application for a match that already started', async () => {
+    const hostToken = await login('13900139000');
+    const applicantToken = await login();
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '过期审核测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/applications`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(201);
+
+    const application = await prisma.matchApplication.findFirstOrThrow({
+      where: { matchId: createResponse.body.id, userId: 'user-13800138000' },
+    });
+
+    await prisma.match.update({
+      where: { id: createResponse.body.id },
+      data: { startTime: new Date(Date.now() - 60 * 60 * 1000) },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/applications/${application.id}/approve`)
+      .set('Authorization', `Bearer ${hostToken}`)
+      .expect(409);
+  });
+
   it('lets the host review applications and approve one applicant into the thread', async () => {
     const hostToken = await login();
     const applicantToken = await login('13900139000');

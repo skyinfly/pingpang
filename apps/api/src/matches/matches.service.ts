@@ -26,8 +26,13 @@ function buildShanghaiSlotDate(slotStartMinutes: number, now = new Date()) {
   const { year, month, day } = getShanghaiDateParts(now);
   const hours = String(Math.floor(slotStartMinutes / 60)).padStart(2, '0');
   const minutes = String(slotStartMinutes % 60).padStart(2, '0');
+  const todayCandidate = new Date(`${year}-${month}-${day}T${hours}:${minutes}:00+08:00`);
 
-  return new Date(`${year}-${month}-${day}T${hours}:${minutes}:00+08:00`);
+  if (todayCandidate.getTime() > now.getTime()) {
+    return todayCandidate;
+  }
+
+  return new Date(todayCandidate.getTime() + 24 * 60 * 60 * 1000);
 }
 
 const REJECTED_APPLICATION_REASON = '这场球局当前席位更适合其他安排，你可以换个时间段继续约。';
@@ -44,6 +49,7 @@ export class MatchesService {
       where: {
         city: filters?.city || undefined,
         level: filters?.level || undefined,
+        startTime: { gt: new Date() },
       },
       orderBy: { startTime: 'asc' },
     });
@@ -304,6 +310,14 @@ export class MatchesService {
       throw new ConflictException('host cannot apply to own match');
     }
 
+    if (match.startTime.getTime() <= Date.now()) {
+      throw new ConflictException(`match ${id} has already started`);
+    }
+
+    if (match.openSlots <= 0) {
+      throw new ConflictException(`match ${id} has no open slots`);
+    }
+
     const applicant = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -363,6 +377,10 @@ export class MatchesService {
 
     if (application.status !== 'pending') {
       throw new ConflictException(`application ${applicationId} is already ${application.status}`);
+    }
+
+    if (match.startTime.getTime() <= Date.now()) {
+      throw new ConflictException(`match ${matchId} has already started`);
     }
 
     if (match.openSlots <= 0) {

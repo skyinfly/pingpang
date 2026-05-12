@@ -182,6 +182,12 @@ const seededOptionPresets = [
   },
 ] as const;
 
+function daysFromNow(days: number, hour: number, minute: number) {
+  const base = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  base.setUTCHours(hour - 8, minute, 0, 0);
+  return base;
+}
+
 const seededMatches = [
   {
     id: 'match-seed-1',
@@ -190,7 +196,7 @@ const seededMatches = [
     venueId: 'venue-seed-1',
     courtId: 'venue-court-1',
     slotId: 'venue-slot-1',
-    startTime: new Date('2026-04-23T19:30:00+08:00'),
+    startTime: daysFromNow(2, 19, 30),
     city: '上海',
     level: 'intermediate',
     maxPlayers: 4,
@@ -207,7 +213,7 @@ const seededMatches = [
     venueId: 'venue-seed-2',
     courtId: 'venue-court-3',
     slotId: 'venue-slot-3',
-    startTime: new Date('2026-04-24T12:30:00+08:00'),
+    startTime: daysFromNow(3, 12, 30),
     city: '上海',
     level: 'intermediate',
     maxPlayers: 2,
@@ -392,11 +398,11 @@ export async function seedDatabaseInTransaction(tx: Prisma.TransactionClient) {
       matchId: 'match-seed-1',
       title: '徐汇今晚练球局',
       venueName: '徐家汇活力馆 3 号台',
-      scheduledAt: new Date('2026-04-23T19:30:00+08:00'),
+      scheduledAt: daysFromNow(2, 19, 30),
       hostUserId: 'user-reviewee-1',
       status: 'active',
       latestMessagePreview: '我大概 19:20 到，先去前台等你们。',
-      latestMessageAt: new Date('2026-04-23T18:40:00+08:00'),
+      latestMessageAt: daysFromNow(2, 18, 40),
       lastMessageSenderId: 'user-13800138000',
       lastMessageSenderName: '球友1380013',
     },
@@ -405,11 +411,11 @@ export async function seedDatabaseInTransaction(tx: Prisma.TransactionClient) {
       matchId: 'match-seed-2',
       title: '静安明日午休快打局',
       venueName: '静安寺白领馆 2 号台',
-      scheduledAt: new Date('2026-04-24T12:30:00+08:00'),
+      scheduledAt: daysFromNow(3, 12, 30),
       hostUserId: 'user-reviewee-1',
       status: 'active',
       latestMessagePreview: '明天中午刚好空出一个位置，想来的可以直接补位。',
-      latestMessageAt: new Date('2026-04-23T11:00:00+08:00'),
+      latestMessageAt: daysFromNow(3, 11, 0),
       lastMessageSenderId: null,
       lastMessageSenderName: '系统',
     },
