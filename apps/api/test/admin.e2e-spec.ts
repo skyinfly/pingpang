@@ -500,6 +500,33 @@ describe('Admin API', () => {
     expect(matchAfter?.openSlots).toBe(2);
   });
 
+  it('cancels a match via admin and notifies pending applicants', async () => {
+    const applicantToken = await loginAs('13800138000');
+    await request(app.getHttpServer())
+      .post('/matches/match-seed-1/applications')
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/admin/matches/match-seed-1/cancel')
+      .set('X-Admin-Token', adminToken)
+      .send({ reason: '场馆系统升级' })
+      .expect(201);
+
+    expect(response.body).toMatchObject({ id: 'match-seed-1', status: 'cancelled', openSlots: 0 });
+
+    const message = await prisma.message.findFirst({
+      where: { matchId: 'match-seed-1', userId: 'user-13800138000', status: 'cancelled' },
+    });
+    expect(message?.content).toContain('场馆系统升级');
+
+    const application = await prisma.matchApplication.findFirstOrThrow({
+      where: { matchId: 'match-seed-1', userId: 'user-13800138000' },
+    });
+    expect(application.status).toBe('rejected');
+  });
+
   it('rejects approving an already-decided application', async () => {
     const applicantToken = await loginAs('13800138000');
     await request(app.getHttpServer())

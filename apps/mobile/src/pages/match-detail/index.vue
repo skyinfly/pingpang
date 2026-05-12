@@ -63,10 +63,15 @@ const isStarted = computed(() => {
   return Number.isFinite(startedAt) && startedAt <= Date.now();
 });
 const isFull = computed(() => Boolean(match.value && match.value.openSlots <= 0));
+const isCancelled = computed(() => match.value?.status === 'cancelled');
 
 const ctaLabel = computed(() => {
   if (submitting.value) {
     return '提交申请中...';
+  }
+
+  if (isCancelled.value) {
+    return '球局已取消';
   }
 
   if (isMember.value) {
@@ -97,6 +102,10 @@ const ctaLabel = computed(() => {
 });
 
 const ctaDescription = computed(() => {
+  if (isCancelled.value) {
+    return '主理人已经取消了这场球局，看看广场上有没有其他可以补位的安排。';
+  }
+
   if (isMember.value) {
     return '你已经加入这场球局，可以直接去局内聊天和大家确认到场安排。';
   }
@@ -127,6 +136,7 @@ const isCtaDisabled = computed(
     submitting.value ||
     applied.value ||
     isPendingApplication.value ||
+    isCancelled.value ||
     (!isMember.value && (isStarted.value || isFull.value)),
 );
 
@@ -228,7 +238,7 @@ async function handleJoin() {
     return;
   }
 
-  if (isStarted.value || isFull.value) {
+  if (isCancelled.value || isStarted.value || isFull.value) {
     return;
   }
 

@@ -12,6 +12,7 @@ export function toMatchCard(match: Match, score: number) {
     distanceKm: match.distanceKm,
     maxPlayers: match.maxPlayers,
     openSlots: match.openSlots,
+    status: match.status,
     hostCreditScore: match.hostCreditScore,
     level: match.level,
     matchRate: match.matchRate,

@@ -97,6 +97,7 @@ model Match {
   level           String
   maxPlayers      Int
   openSlots       Int
+  status          String                 @default("open")
   hostUserId      String
   hostCreditScore Int
   distanceKm      Float

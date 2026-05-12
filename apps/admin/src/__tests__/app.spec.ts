@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+﻿import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import App from '../App.vue';
 
@@ -35,7 +35,7 @@ describe('Admin App', () => {
                 hostUserId: 'user-reviewee-1',
                 hostNickname: '球友里卡',
                 hostPhone: '13900139000',
-                applicationCounts: { pending: 0, approved: 0, rejected: 0 },
+                status: 'open', applicationCounts: { pending: 0, approved: 0, rejected: 0 },
               },
             ],
           },

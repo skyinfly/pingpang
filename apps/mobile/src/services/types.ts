@@ -23,6 +23,7 @@ export type MatchCard = {
   distanceKm: number;
   maxPlayers: number;
   openSlots: number;
+  status?: 'open' | 'cancelled';
   hostCreditScore: number;
   level: string;
   matchRate: number;

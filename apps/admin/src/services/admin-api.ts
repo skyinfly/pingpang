@@ -15,6 +15,7 @@ export type AdminMatchRow = {
   level: string;
   maxPlayers: number;
   openSlots: number;
+  status: 'open' | 'cancelled';
   startTime: string;
   hostUserId: string;
   hostNickname: string;
@@ -205,6 +206,8 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
     createMatch: (payload: Required<AdminMatchPayload>) => send<AdminMatchRow>('POST', '/admin/matches', payload),
     updateMatch: (id: string, payload: AdminMatchPayload) => send<AdminMatchRow>('PATCH', `/admin/matches/${id}`, payload),
     deleteMatch: (id: string) => remove(`/admin/matches/${id}`),
+    cancelMatch: (id: string, reason?: string) =>
+      send<AdminMatchRow>('POST', `/admin/matches/${id}/cancel`, reason ? { reason } : {}),
     createCourt: (venueId: string, payload: Required<Pick<AdminCourtPayload, 'name'>> & AdminCourtPayload) =>
       send<AdminVenueRow>('POST', `/admin/venues/${venueId}/courts`, payload),
     updateCourt: (courtId: string, payload: AdminCourtPayload) =>

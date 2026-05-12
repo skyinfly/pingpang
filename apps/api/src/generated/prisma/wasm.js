@@ -184,6 +184,7 @@ exports.Prisma.MatchScalarFieldEnum = {
   level: 'level',
   maxPlayers: 'maxPlayers',
   openSlots: 'openSlots',
+  status: 'status',
   hostUserId: 'hostUserId',
   hostCreditScore: 'hostCreditScore',
   distanceKm: 'distanceKm',

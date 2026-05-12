@@ -49,6 +49,7 @@ export class MatchesService {
       where: {
         city: filters?.city || undefined,
         level: filters?.level || undefined,
+        status: 'open',
         startTime: { gt: new Date() },
       },
       orderBy: { startTime: 'asc' },
@@ -310,6 +311,10 @@ export class MatchesService {
       throw new ConflictException('host cannot apply to own match');
     }
 
+    if (match.status === 'cancelled') {
+      throw new ConflictException(`match ${id} has been cancelled`);
+    }
+
     if (match.startTime.getTime() <= Date.now()) {
       throw new ConflictException(`match ${id} has already started`);
     }
@@ -377,6 +382,10 @@ export class MatchesService {
 
     if (application.status !== 'pending') {
       throw new ConflictException(`application ${applicationId} is already ${application.status}`);
+    }
+
+    if (match.status === 'cancelled') {
+      throw new ConflictException(`match ${matchId} has been cancelled`);
     }
 
     if (match.startTime.getTime() <= Date.now()) {
@@ -554,6 +563,80 @@ export class MatchesService {
       applicantLevel: applicant.level,
       applicantCreditScore: applicant.creditScore,
     };
+  }
+
+  async cancelMatch(matchId: string, hostUserId: string, reason?: string) {
+    const match = await this.requireHostOwnedMatch(matchId, hostUserId);
+    return this.cancelMatchInternal(match, reason);
+  }
+
+  async cancelMatchAsAdmin(matchId: string, reason?: string) {
+    const match = await this.requireMatch(matchId);
+    return this.cancelMatchInternal(match, reason);
+  }
+
+  private async cancelMatchInternal(match: Match, reason?: string) {
+    if (match.status === 'cancelled') {
+      throw new ConflictException(`match ${match.id} is already cancelled`);
+    }
+
+    if (match.startTime.getTime() <= Date.now()) {
+      throw new ConflictException(`match ${match.id} has already started`);
+    }
+
+    const cancellationReason =
+      reason?.trim() || '主理人取消了这场球局，给你带来的不便请见谅，看看广场上有没有其他可以补位的球局。';
+
+    const participants = await this.prisma.chatThreadParticipant.findMany({
+      where: { threadId: match.id },
+      select: { userId: true },
+    });
+    const pendingApplications = await this.prisma.matchApplication.findMany({
+      where: { matchId: match.id, status: 'pending' },
+      select: { id: true, userId: true },
+    });
+    const recipientIds = new Set<string>([
+      ...participants.map((item) => item.userId),
+      ...pendingApplications.map((item) => item.userId),
+    ]);
+    recipientIds.delete(match.hostUserId);
+
+    const cancelled = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.match.update({
+        where: { id: match.id },
+        data: { status: 'cancelled', openSlots: 0 },
+      });
+
+      await tx.chatThread.updateMany({
+        where: { matchId: match.id },
+        data: { status: 'cancelled' },
+      });
+
+      if (pendingApplications.length) {
+        await tx.matchApplication.updateMany({
+          where: { matchId: match.id, status: 'pending' },
+          data: { status: 'rejected', decisionReason: cancellationReason },
+        });
+      }
+
+      const messages = [...recipientIds].map((userId) => ({
+        userId,
+        kind: 'system',
+        title: '球局已取消',
+        content: `「${match.title}」已取消：${cancellationReason}`,
+        senderName: '系统',
+        status: 'cancelled',
+        matchId: match.id,
+      }));
+
+      if (messages.length) {
+        await tx.message.createMany({ data: messages });
+      }
+
+      return updated;
+    });
+
+    return this.mapMatch(cancelled);
   }
 
   private mapMatch(match: Match) {

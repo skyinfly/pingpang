@@ -761,6 +761,84 @@ describe('MatchDetailPage', () => {
     expect((cta.element as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('renders a cancelled-match state when status is cancelled', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+
+    window.location.hash = '#/pages/match-detail/index?id=match-cancelled-1';
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        success,
+      }: {
+        url: string;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        if (url.endsWith('/matches/joined')) {
+          success({ statusCode: 200, data: { items: [] } });
+          return;
+        }
+
+        if (url.endsWith('/matches/match-cancelled-1/my-application')) {
+          success({ statusCode: 200, data: { status: 'none' } });
+          return;
+        }
+
+        success({
+          statusCode: 200,
+          data: {
+            id: 'match-cancelled-1',
+            title: '已取消的练球局',
+            venueName: '徐家汇活力馆 3 号台',
+            startTime: '2099-04-24T11:30:00.000Z',
+            distanceKm: 1.8,
+            maxPlayers: 4,
+            openSlots: 0,
+            status: 'cancelled',
+            hostCreditScore: 97,
+            level: 'intermediate',
+            matchRate: 93,
+            city: '上海',
+            score: 66,
+            hostUserId: 'user-reviewee-1',
+          },
+        });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(MatchDetailPage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('球局已取消');
+    });
+
+    const cta = wrapper.get('[data-testid="join-match"]');
+    expect((cta.element as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('renders a full-match state when openSlots is zero', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

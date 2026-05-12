@@ -11,5 +11,6 @@ import { DevBearerGuard } from '../common/auth/dev-bearer.guard';
   imports: [PrismaModule, RecommendationsModule, UsersModule],
   controllers: [MatchesController],
   providers: [MatchesService, MatchOptionsService, DevBearerGuard],
+  exports: [MatchesService],
 })
 export class MatchesModule {}

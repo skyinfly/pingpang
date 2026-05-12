@@ -32,6 +32,11 @@ export class AdminController {
     return this.adminService.deleteMatch(id);
   }
 
+  @Post('matches/:id/cancel')
+  cancelMatch(@Param('id') id: string, @Body() body: unknown) {
+    return this.adminService.cancelMatch(id, body);
+  }
+
   @Get('users')
   listUsers() {
     return this.adminService.listUsers();

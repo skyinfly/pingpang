@@ -454,6 +454,96 @@ describe('Matches listing', () => {
       .expect(409);
   });
 
+  it('cancels a hosted match, fans out system messages, and hides it from the home feed', async () => {
+    const hostToken = await login('13900139000');
+    const applicantToken = await login();
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '取消测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/applications`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(201);
+
+    const cancelResponse = await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/cancel`)
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({ reason: '场馆临时维护' })
+      .expect(201);
+
+    expect(cancelResponse.body).toMatchObject({
+      id: createResponse.body.id,
+      status: 'cancelled',
+      openSlots: 0,
+    });
+
+    const cancelMessage = await prisma.message.findFirst({
+      where: {
+        matchId: createResponse.body.id,
+        userId: 'user-13800138000',
+        status: 'cancelled',
+      },
+    });
+    expect(cancelMessage?.title).toBe('球局已取消');
+    expect(cancelMessage?.content).toContain('场馆临时维护');
+
+    const pendingApplication = await prisma.matchApplication.findFirstOrThrow({
+      where: { matchId: createResponse.body.id, userId: 'user-13800138000' },
+    });
+    expect(pendingApplication.status).toBe('rejected');
+
+    const listResponse = await request(app.getHttpServer())
+      .get(`/matches?city=${encodeURIComponent('上海')}&level=intermediate`)
+      .expect(200);
+    expect(listResponse.body.items.map((item: { id: string }) => item.id)).not.toContain(createResponse.body.id);
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/applications`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(409);
+  });
+
+  it('rejects cancellation by a non-host user', async () => {
+    const hostToken = await login('13900139000');
+    const otherToken = await login();
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '权限测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/matches/${createResponse.body.id}/cancel`)
+      .set('Authorization', `Bearer ${otherToken}`)
+      .send({})
+      .expect(403);
+  });
+
   it('rejects approving an application for a match that already started', async () => {
     const hostToken = await login('13900139000');
     const applicantToken = await login();

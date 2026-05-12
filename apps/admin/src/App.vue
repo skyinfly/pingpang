@@ -137,6 +137,19 @@ async function approveApplication(applicationId: string) {
   }
 }
 
+async function cancelMatch(matchId: string) {
+  errorMessage.value = '';
+
+  try {
+    const reason = window.prompt('选填：取消原因（留空使用默认文案）') ?? undefined;
+    const saved = await api.value.cancelMatch(matchId, reason?.trim() ? reason.trim() : undefined);
+    upsertById(matches.value, saved);
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '取消失败，请稍后再试';
+  }
+}
+
 async function rejectApplication(applicationId: string) {
   decidingApplicationId.value = applicationId;
   errorMessage.value = '';
@@ -777,9 +790,18 @@ onMounted(() => {
                 <td>
                   待审 {{ match.applicationCounts.pending }} / 通过 {{ match.applicationCounts.approved }} / 拒绝
                   {{ match.applicationCounts.rejected }}
+                  <small v-if="match.status === 'cancelled'" class="cancelled-flag">已取消</small>
                 </td>
                 <td class="actions">
                   <button type="button" @click="openEdit('matches', match)">编辑</button>
+                  <button
+                    type="button"
+                    :data-testid="`cancel-match-${match.id}`"
+                    :disabled="match.status === 'cancelled'"
+                    @click="cancelMatch(match.id)"
+                  >
+                    {{ match.status === 'cancelled' ? '已取消' : '取消球局' }}
+                  </button>
                   <button type="button" @click="deleteRow('matches', match.id)">删除</button>
                 </td>
               </tr>
@@ -1352,5 +1374,15 @@ td small {
   padding: 36px 20px;
   text-align: center;
   color: #6f7b73;
+}
+
+.cancelled-flag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(180, 58, 44, 0.12);
+  color: #8e2e22;
+  font-weight: 800;
 }
 </style>

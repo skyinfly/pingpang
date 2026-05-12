@@ -7829,6 +7829,7 @@ export namespace Prisma {
     level: string | null
     maxPlayers: number | null
     openSlots: number | null
+    status: string | null
     hostUserId: string | null
     hostCreditScore: number | null
     distanceKm: number | null
@@ -7848,6 +7849,7 @@ export namespace Prisma {
     level: string | null
     maxPlayers: number | null
     openSlots: number | null
+    status: string | null
     hostUserId: string | null
     hostCreditScore: number | null
     distanceKm: number | null
@@ -7867,6 +7869,7 @@ export namespace Prisma {
     level: number
     maxPlayers: number
     openSlots: number
+    status: number
     hostUserId: number
     hostCreditScore: number
     distanceKm: number
@@ -7904,6 +7907,7 @@ export namespace Prisma {
     level?: true
     maxPlayers?: true
     openSlots?: true
+    status?: true
     hostUserId?: true
     hostCreditScore?: true
     distanceKm?: true
@@ -7923,6 +7927,7 @@ export namespace Prisma {
     level?: true
     maxPlayers?: true
     openSlots?: true
+    status?: true
     hostUserId?: true
     hostCreditScore?: true
     distanceKm?: true
@@ -7942,6 +7947,7 @@ export namespace Prisma {
     level?: true
     maxPlayers?: true
     openSlots?: true
+    status?: true
     hostUserId?: true
     hostCreditScore?: true
     distanceKm?: true
@@ -8048,6 +8054,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -8086,6 +8093,7 @@ export namespace Prisma {
     level?: boolean
     maxPlayers?: boolean
     openSlots?: boolean
+    status?: boolean
     hostUserId?: boolean
     hostCreditScore?: boolean
     distanceKm?: boolean
@@ -8112,6 +8120,7 @@ export namespace Prisma {
     level?: boolean
     maxPlayers?: boolean
     openSlots?: boolean
+    status?: boolean
     hostUserId?: boolean
     hostCreditScore?: boolean
     distanceKm?: boolean
@@ -8135,6 +8144,7 @@ export namespace Prisma {
     level?: boolean
     maxPlayers?: boolean
     openSlots?: boolean
+    status?: boolean
     hostUserId?: boolean
     hostCreditScore?: boolean
     distanceKm?: boolean
@@ -8158,6 +8168,7 @@ export namespace Prisma {
     level?: boolean
     maxPlayers?: boolean
     openSlots?: boolean
+    status?: boolean
     hostUserId?: boolean
     hostCreditScore?: boolean
     distanceKm?: boolean
@@ -8165,7 +8176,7 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type MatchOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "venueName" | "venueId" | "courtId" | "slotId" | "startTime" | "city" | "level" | "maxPlayers" | "openSlots" | "hostUserId" | "hostCreditScore" | "distanceKm" | "matchRate" | "createdAt", ExtArgs["result"]["match"]>
+  export type MatchOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "venueName" | "venueId" | "courtId" | "slotId" | "startTime" | "city" | "level" | "maxPlayers" | "openSlots" | "status" | "hostUserId" | "hostCreditScore" | "distanceKm" | "matchRate" | "createdAt", ExtArgs["result"]["match"]>
   export type MatchInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     hostUser?: boolean | UserDefaultArgs<ExtArgs>
     venue?: boolean | Match$venueArgs<ExtArgs>
@@ -8210,6 +8221,7 @@ export namespace Prisma {
       level: string
       maxPlayers: number
       openSlots: number
+      status: string
       hostUserId: string
       hostCreditScore: number
       distanceKm: number
@@ -8655,6 +8667,7 @@ export namespace Prisma {
     readonly level: FieldRef<"Match", 'String'>
     readonly maxPlayers: FieldRef<"Match", 'Int'>
     readonly openSlots: FieldRef<"Match", 'Int'>
+    readonly status: FieldRef<"Match", 'String'>
     readonly hostUserId: FieldRef<"Match", 'String'>
     readonly hostCreditScore: FieldRef<"Match", 'Int'>
     readonly distanceKm: FieldRef<"Match", 'Float'>
@@ -14859,6 +14872,7 @@ export namespace Prisma {
     level: 'level',
     maxPlayers: 'maxPlayers',
     openSlots: 'openSlots',
+    status: 'status',
     hostUserId: 'hostUserId',
     hostCreditScore: 'hostCreditScore',
     distanceKm: 'distanceKm',
@@ -15439,6 +15453,7 @@ export namespace Prisma {
     level?: StringFilter<"Match"> | string
     maxPlayers?: IntFilter<"Match"> | number
     openSlots?: IntFilter<"Match"> | number
+    status?: StringFilter<"Match"> | string
     hostUserId?: StringFilter<"Match"> | string
     hostCreditScore?: IntFilter<"Match"> | number
     distanceKm?: FloatFilter<"Match"> | number
@@ -15464,6 +15479,7 @@ export namespace Prisma {
     level?: SortOrder
     maxPlayers?: SortOrder
     openSlots?: SortOrder
+    status?: SortOrder
     hostUserId?: SortOrder
     hostCreditScore?: SortOrder
     distanceKm?: SortOrder
@@ -15492,6 +15508,7 @@ export namespace Prisma {
     level?: StringFilter<"Match"> | string
     maxPlayers?: IntFilter<"Match"> | number
     openSlots?: IntFilter<"Match"> | number
+    status?: StringFilter<"Match"> | string
     hostUserId?: StringFilter<"Match"> | string
     hostCreditScore?: IntFilter<"Match"> | number
     distanceKm?: FloatFilter<"Match"> | number
@@ -15517,6 +15534,7 @@ export namespace Prisma {
     level?: SortOrder
     maxPlayers?: SortOrder
     openSlots?: SortOrder
+    status?: SortOrder
     hostUserId?: SortOrder
     hostCreditScore?: SortOrder
     distanceKm?: SortOrder
@@ -15544,6 +15562,7 @@ export namespace Prisma {
     level?: StringWithAggregatesFilter<"Match"> | string
     maxPlayers?: IntWithAggregatesFilter<"Match"> | number
     openSlots?: IntWithAggregatesFilter<"Match"> | number
+    status?: StringWithAggregatesFilter<"Match"> | string
     hostUserId?: StringWithAggregatesFilter<"Match"> | string
     hostCreditScore?: IntWithAggregatesFilter<"Match"> | number
     distanceKm?: FloatWithAggregatesFilter<"Match"> | number
@@ -16352,6 +16371,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -16376,6 +16396,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -16394,6 +16415,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -16418,6 +16440,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -16439,6 +16462,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -16455,6 +16479,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -16473,6 +16498,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -17379,6 +17405,7 @@ export namespace Prisma {
     level?: SortOrder
     maxPlayers?: SortOrder
     openSlots?: SortOrder
+    status?: SortOrder
     hostUserId?: SortOrder
     hostCreditScore?: SortOrder
     distanceKm?: SortOrder
@@ -17406,6 +17433,7 @@ export namespace Prisma {
     level?: SortOrder
     maxPlayers?: SortOrder
     openSlots?: SortOrder
+    status?: SortOrder
     hostUserId?: SortOrder
     hostCreditScore?: SortOrder
     distanceKm?: SortOrder
@@ -17425,6 +17453,7 @@ export namespace Prisma {
     level?: SortOrder
     maxPlayers?: SortOrder
     openSlots?: SortOrder
+    status?: SortOrder
     hostUserId?: SortOrder
     hostCreditScore?: SortOrder
     distanceKm?: SortOrder
@@ -18571,6 +18600,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -18594,6 +18624,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -18669,6 +18700,7 @@ export namespace Prisma {
     level?: StringFilter<"Match"> | string
     maxPlayers?: IntFilter<"Match"> | number
     openSlots?: IntFilter<"Match"> | number
+    status?: StringFilter<"Match"> | string
     hostUserId?: StringFilter<"Match"> | string
     hostCreditScore?: IntFilter<"Match"> | number
     distanceKm?: FloatFilter<"Match"> | number
@@ -18777,6 +18809,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -18799,6 +18832,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -18936,6 +18970,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -18958,6 +18993,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -19074,6 +19110,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -19096,6 +19133,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -19569,6 +19607,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -19592,6 +19631,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -19625,6 +19665,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -19648,6 +19689,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -19665,6 +19707,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -19688,6 +19731,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -19785,6 +19829,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -19808,6 +19853,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -20106,6 +20152,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostCreditScore: number
     distanceKm: number
     matchRate: number
@@ -20129,6 +20176,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -20152,6 +20200,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -20172,6 +20221,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -20233,6 +20283,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -20313,6 +20364,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -20335,6 +20387,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -20355,6 +20408,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -20373,6 +20427,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -20389,6 +20444,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -20411,6 +20467,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -20431,6 +20488,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -20449,6 +20507,7 @@ export namespace Prisma {
     level: string
     maxPlayers: number
     openSlots: number
+    status?: string
     hostUserId: string
     hostCreditScore: number
     distanceKm: number
@@ -20465,6 +20524,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
     matchRate?: IntFieldUpdateOperationsInput | number
@@ -20487,6 +20547,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number
@@ -20507,6 +20568,7 @@ export namespace Prisma {
     level?: StringFieldUpdateOperationsInput | string
     maxPlayers?: IntFieldUpdateOperationsInput | number
     openSlots?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
     hostUserId?: StringFieldUpdateOperationsInput | string
     hostCreditScore?: IntFieldUpdateOperationsInput | number
     distanceKm?: FloatFieldUpdateOperationsInput | number

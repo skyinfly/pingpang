@@ -86,4 +86,14 @@ export class MatchesController {
   ) {
     return this.matchesService.rejectApplication(id, applicationId, user.id, body.reason);
   }
+
+  @Post('matches/:id/cancel')
+  @UseGuards(DevBearerGuard)
+  cancel(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @AuthUser() user: SessionUser,
+  ) {
+    return this.matchesService.cancelMatch(id, user.id, body?.reason);
+  }
 }

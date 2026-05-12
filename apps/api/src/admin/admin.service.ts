@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { MatchesService } from '../matches/matches.service';
 
 type ApplicationCounts = {
   pending: number;
@@ -117,7 +118,16 @@ function buildShanghaiSlotDate(slotStartMinutes: number, now = new Date()) {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly matchesService: MatchesService,
+  ) {}
+
+  async cancelMatch(matchId: string, payload: unknown) {
+    const body = payload === undefined || payload === null ? {} : asRecord(payload);
+    await this.matchesService.cancelMatchAsAdmin(matchId, optionalString(body.reason));
+    return this.getMatchRow(matchId);
+  }
 
   async getSummary() {
     const [users, matches, pendingApplications, activeVenues, unreadMessages, reviews] = await Promise.all([
@@ -891,6 +901,7 @@ export class AdminService {
       level: string;
       maxPlayers: number;
       openSlots: number;
+      status: string;
       startTime: Date;
       hostUserId: string;
       hostUser: {
@@ -908,6 +919,7 @@ export class AdminService {
       level: match.level,
       maxPlayers: match.maxPlayers,
       openSlots: match.openSlots,
+      status: match.status,
       startTime: match.startTime.toISOString(),
       hostUserId: match.hostUserId,
       hostNickname: match.hostUser.nickname,
