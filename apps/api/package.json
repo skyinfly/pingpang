@@ -27,7 +27,7 @@
   "scripts": {
     "start:dev": "nest start --watch",
     "test": "jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "jest --runInBand --config ./test/jest-e2e.json",
     "prisma:generate": "node ./scripts/prisma-with-env.mjs generate",
     "db:push": "node ./scripts/prisma-with-env.mjs db push",
     "db:migrate": "node ./scripts/prisma-with-env.mjs migrate dev",

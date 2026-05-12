@@ -86,7 +86,7 @@ model OptionPreset {
 }
 
 model Match {
-  id              String                 @id
+  id              String                 @id @default(cuid())
   title           String
   venueName       String
   venueId         String?
@@ -140,7 +140,7 @@ model Review {
 }
 
 model ChatThread {
-  id                    String                  @id
+  id                    String                  @id @default(cuid())
   matchId               String                  @unique
   title                 String
   venueName             String

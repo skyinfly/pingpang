@@ -16343,7 +16343,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -16364,7 +16364,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -16427,7 +16427,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateManyInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -16612,7 +16612,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadCreateInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     scheduledAt: Date | string
@@ -16630,7 +16630,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadUncheckedCreateInput = {
-    id: string
+    id?: string
     matchId: string
     title: string
     venueName: string
@@ -16684,7 +16684,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadCreateManyInput = {
-    id: string
+    id?: string
     matchId: string
     title: string
     venueName: string
@@ -18556,7 +18556,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateWithoutHostUserInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -18576,7 +18576,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateWithoutHostUserInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -18762,7 +18762,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateWithoutVenueInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -18782,7 +18782,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateWithoutVenueInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     courtId?: string | null
@@ -18921,7 +18921,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateWithoutCourtInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -18941,7 +18941,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateWithoutCourtInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -19059,7 +19059,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateWithoutSlotInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -19079,7 +19079,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateWithoutSlotInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -19304,7 +19304,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadCreateWithoutMatchInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     scheduledAt: Date | string
@@ -19321,7 +19321,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadUncheckedCreateWithoutMatchInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     scheduledAt: Date | string
@@ -19554,7 +19554,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateWithoutApplicationsInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -19574,7 +19574,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateWithoutApplicationsInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -19650,7 +19650,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateWithoutThreadInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     startTime: Date | string
@@ -19670,7 +19670,7 @@ export namespace Prisma {
   }
 
   export type MatchUncheckedCreateWithoutThreadInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -19860,7 +19860,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadCreateWithoutParticipantsInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     scheduledAt: Date | string
@@ -19877,7 +19877,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadUncheckedCreateWithoutParticipantsInput = {
-    id: string
+    id?: string
     matchId: string
     title: string
     venueName: string
@@ -20004,7 +20004,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadCreateWithoutMessagesInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     scheduledAt: Date | string
@@ -20021,7 +20021,7 @@ export namespace Prisma {
   }
 
   export type ChatThreadUncheckedCreateWithoutMessagesInput = {
-    id: string
+    id?: string
     matchId: string
     title: string
     venueName: string
@@ -20088,7 +20088,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateManyHostUserInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -20216,7 +20216,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateManyVenueInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     courtId?: string | null
@@ -20356,7 +20356,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateManyCourtInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null
@@ -20432,7 +20432,7 @@ export namespace Prisma {
   }
 
   export type MatchCreateManySlotInput = {
-    id: string
+    id?: string
     title: string
     venueName: string
     venueId?: string | null

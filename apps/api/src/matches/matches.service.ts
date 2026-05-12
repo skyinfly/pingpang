@@ -175,7 +175,6 @@ export class MatchesService {
   }
 
   async create(payload: CreateMatchDto, hostUserId: string) {
-    const matchId = `match-${Date.now()}`;
     const createdMatch = await this.prisma.$transaction(async (tx) => {
       const venue = await tx.venue.findFirst({
         where: {
@@ -246,7 +245,6 @@ export class MatchesService {
 
       const match = await tx.match.create({
         data: {
-          id: matchId,
           title: payload.title,
           venueName: `${venue.name} ${court.name}`,
           venueId: venue.id,
