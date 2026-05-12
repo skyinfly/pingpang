@@ -128,6 +128,14 @@ export function applyToMatch(id: string) {
   });
 }
 
+export function cancelHostedMatch(matchId: string, reason?: string) {
+  return http<MatchCard>(`/matches/${encodeURIComponent(matchId)}/cancel`, {
+    method: 'POST',
+    data: reason ? { reason } : {},
+    headers: withAuthHeaders(),
+  });
+}
+
 export function fetchMessageSummary() {
   return http<MessageSummary>('/messages/summary', {
     headers: withAuthHeaders(),
@@ -194,6 +202,7 @@ export const apiClient = {
   fetchMatchOptions,
   createMatch,
   applyToMatch,
+  cancelHostedMatch,
   fetchMessageSummary,
   listMessages,
   listChatThreads,

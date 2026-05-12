@@ -915,4 +915,95 @@ describe('MatchDetailPage', () => {
     const cta = wrapper.get('[data-testid="join-match"]');
     expect((cta.element as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('lets the host cancel their own match and flips the CTA to a cancelled state', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+    const requests: Array<{ url: string; method: string }> = [];
+
+    window.location.hash = '#/pages/match-detail/index?id=match-host-cancel-1';
+
+    const baseMatch = {
+      id: 'match-host-cancel-1',
+      title: '主理人取消测试局',
+      venueName: '徐家汇活力馆 3 号台',
+      startTime: '2099-04-24T11:30:00.000Z',
+      distanceKm: 1.8,
+      maxPlayers: 4,
+      openSlots: 2,
+      hostCreditScore: 97,
+      level: 'intermediate',
+      matchRate: 93,
+      city: '上海',
+      score: 66,
+      hostUserId: 'user-13800138000',
+    };
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        method,
+        success,
+      }: {
+        url: string;
+        method?: string;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        requests.push({ url, method: method ?? 'GET' });
+
+        if (url.endsWith('/matches/match-host-cancel-1/applications') && (method ?? 'GET') === 'GET') {
+          success({ statusCode: 200, data: { items: [] } });
+          return;
+        }
+
+        if (url.endsWith('/matches/match-host-cancel-1/cancel')) {
+          success({
+            statusCode: 201,
+            data: { ...baseMatch, openSlots: 0, status: 'cancelled' },
+          });
+          return;
+        }
+
+        success({ statusCode: 200, data: baseMatch });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(MatchDetailPage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('取消这场球局');
+    });
+
+    await wrapper.get('[data-testid="cancel-hosted-match"]').trigger('click');
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="cancel-hosted-match"]').exists()).toBe(false);
+    });
+
+    expect(
+      requests.some((r) => r.url.endsWith('/matches/match-host-cancel-1/cancel') && r.method === 'POST'),
+    ).toBe(true);
+  });
 });

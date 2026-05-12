@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import {
   applyToMatch,
   approveHostedApplication,
+  cancelHostedMatch,
   fetchMatchById,
   fetchMyMatchApplicationStatus,
   listHostedApplications,
@@ -26,6 +27,8 @@ const joinError = ref('');
 const hostedApplications = ref<HostedMatchApplication[]>([]);
 const applicationsLoading = ref(false);
 const hostActionError = ref('');
+const cancelling = ref(false);
+const cancelError = ref('');
 const myApplicationStatus = ref<MyMatchApplicationStatus>({ status: 'none' });
 const myApplicationLoading = ref(false);
 const activeRejectApplicationId = ref('');
@@ -336,6 +339,27 @@ async function handleReject(applicationId: string) {
   }
 }
 
+async function handleCancelMatch() {
+  if (!match.value || cancelling.value) {
+    return;
+  }
+
+  cancelError.value = '';
+  cancelling.value = true;
+
+  try {
+    const updated = await cancelHostedMatch(match.value.id);
+    match.value = updated;
+    hostedApplications.value = hostedApplications.value.map((item) =>
+      item.status === 'pending' ? { ...item, status: 'rejected' as const } : item,
+    );
+  } catch {
+    cancelError.value = '取消失败，请检查网络或稍后再试。';
+  } finally {
+    cancelling.value = false;
+  }
+}
+
 watch(
   isHost,
   (value) => {
@@ -423,6 +447,20 @@ if (initialMatchId) {
           <text class="tag">沟通顺畅 +1</text>
           <text class="tag tag-warn">爽约 -3</text>
         </view>
+      </view>
+
+      <view v-if="isHost && !isCancelled" class="panel panel-last">
+        <text class="panel-label">主理人操作</text>
+        <text class="panel-value">局内沟通不顺或场馆变动时，可以提前取消这场球局，已通过的球友会收到系统消息。</text>
+        <button
+          class="application-button application-button--secondary"
+          data-testid="cancel-hosted-match"
+          :disabled="cancelling"
+          @click="handleCancelMatch"
+        >
+          {{ cancelling ? '取消中...' : '取消这场球局' }}
+        </button>
+        <text v-if="cancelError" class="error-copy">{{ cancelError }}</text>
       </view>
 
       <view v-if="isHost" class="panel panel-last">
