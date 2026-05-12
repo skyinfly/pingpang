@@ -150,13 +150,24 @@ function handleLogout() {
           v-for="item in myMatches"
           :key="item.id"
           class="hosted-card"
+          :class="{ 'hosted-card--cancelled': item.status === 'cancelled' }"
           data-testid="hosted-match-card"
           @click="openMatchDetail(item.id)"
         >
-          <text class="hosted-title">{{ item.title }}</text>
+          <text class="hosted-title">
+            {{ item.title }}
+            <text v-if="item.status === 'cancelled'" class="hosted-status-tag">已取消</text>
+          </text>
           <text class="hosted-copy">{{ item.venueName }}</text>
           <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
-          <text class="hosted-meta">还有 {{ item.openSlots }} 个空位 · 匹配度 {{ item.matchRate }}%</text>
+          <text class="hosted-meta">
+            <template v-if="item.status === 'cancelled'">
+              这场球局已被取消，球友会在消息中心看到通知。
+            </template>
+            <template v-else>
+              还有 {{ item.openSlots }} 个空位 · 匹配度 {{ item.matchRate }}%
+            </template>
+          </text>
         </view>
       </view>
 
@@ -177,13 +188,24 @@ function handleLogout() {
           v-for="item in joinedMatches"
           :key="item.id"
           class="hosted-card joined-card"
+          :class="{ 'hosted-card--cancelled': item.status === 'cancelled' }"
           data-testid="joined-match-card"
           @click="openMatchDetail(item.id)"
         >
-          <text class="hosted-title">{{ item.title }}</text>
+          <text class="hosted-title">
+            {{ item.title }}
+            <text v-if="item.status === 'cancelled'" class="hosted-status-tag">已取消</text>
+          </text>
           <text class="hosted-copy">{{ item.venueName }}</text>
           <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
-          <text class="hosted-meta">这场球局已经通过审核，可以继续进聊天沟通</text>
+          <text class="hosted-meta">
+            <template v-if="item.status === 'cancelled'">
+              主理人已取消这场球局，去广场看看其他可以约的球。
+            </template>
+            <template v-else>
+              这场球局已经通过审核，可以继续进聊天沟通
+            </template>
+          </text>
         </view>
       </view>
     </template>
@@ -363,5 +385,21 @@ function handleLogout() {
   color: $color-primary;
   font-size: 22rpx;
   font-weight: 700;
+}
+
+.hosted-card--cancelled {
+  background: #f5f0ea;
+  opacity: 0.85;
+}
+
+.hosted-status-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(180, 58, 44, 0.14);
+  color: #8e2e22;
+  font-size: 20rpx;
+  font-weight: 800;
 }
 </style>

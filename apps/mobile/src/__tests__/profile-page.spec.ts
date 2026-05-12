@@ -277,4 +277,97 @@ describe('ProfilePage', () => {
       expect(wrapper.text()).not.toContain('你还没有通过审核的球局');
     });
   });
+
+  it('marks hosted matches that have been cancelled with a tag', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        success,
+      }: {
+        url: string;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        if (url.endsWith('/matches/mine')) {
+          success({
+            statusCode: 200,
+            data: {
+              items: [
+                {
+                  id: 'match-hosted-cancel-1',
+                  title: '已取消的徐汇晚场',
+                  venueName: '徐家汇活力馆 6 号台',
+                  startTime: '2099-04-22T19:30:00+08:00',
+                  distanceKm: 1.2,
+                  maxPlayers: 4,
+                  openSlots: 0,
+                  status: 'cancelled',
+                  hostCreditScore: 100,
+                  hostUserId: 'user-13800138000',
+                  level: 'intermediate',
+                  matchRate: 88,
+                  city: '上海',
+                  score: 70,
+                },
+              ],
+            },
+          });
+          return;
+        }
+
+        if (url.endsWith('/matches/joined')) {
+          success({ statusCode: 200, data: { items: [] } });
+          return;
+        }
+
+        success({
+          statusCode: 200,
+          data: {
+            user: {
+              id: 'user-13800138000',
+              nickname: '球友1380013',
+              city: '上海',
+              level: 'intermediate',
+              creditScore: 100,
+            },
+            stats: { totalReviews: 0, positiveReviews: 0, averageScore: 0 },
+            tags: [],
+            items: [],
+          },
+        });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(ProfilePage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('已取消的徐汇晚场');
+      expect(wrapper.text()).toContain('已取消');
+      expect(wrapper.text()).toContain('球友会在消息中心看到通知');
+    });
+  });
 });
