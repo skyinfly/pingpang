@@ -196,15 +196,7 @@ export class AdminService {
 
   async listVenues() {
     const venues = await this.prisma.venue.findMany({
-      include: {
-        _count: {
-          select: {
-            courts: true,
-            availabilitySlots: true,
-            matches: true,
-          },
-        },
-      },
+      include: this.venueDetailInclude(),
       orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }],
     });
 
@@ -223,7 +215,7 @@ export class AdminService {
         distanceKm: optionalPositiveNumber(body.distanceKm) ?? 0,
         isActive: optionalBoolean(body.isActive) ?? true,
       },
-      include: this.venueCountsInclude(),
+      include: this.venueDetailInclude(),
     });
 
     return this.mapVenue(venue);
@@ -241,7 +233,7 @@ export class AdminService {
         distanceKm: optionalPositiveNumber(body.distanceKm),
         isActive: optionalBoolean(body.isActive),
       },
-      include: this.venueCountsInclude(),
+      include: this.venueDetailInclude(),
     });
 
     return this.mapVenue(venue);
@@ -250,7 +242,7 @@ export class AdminService {
   async deleteVenue(id: string) {
     const venue = await this.prisma.venue.findUnique({
       where: { id },
-      include: this.venueCountsInclude(),
+      include: this.venueDetailInclude(),
     });
 
     if (!venue) {
@@ -264,6 +256,168 @@ export class AdminService {
     await this.prisma.venue.delete({ where: { id } });
 
     return { ok: true, id };
+  }
+
+  async createCourt(venueId: string, payload: unknown) {
+    await this.requireVenue(venueId);
+    const body = asRecord(payload);
+    await this.prisma.venueCourt.create({
+      data: {
+        venueId,
+        name: requiredString(body, 'name'),
+        sortOrder: optionalInteger(body.sortOrder) ?? 0,
+        isActive: optionalBoolean(body.isActive) ?? true,
+      },
+    });
+
+    return this.getVenueDetail(venueId);
+  }
+
+  async updateCourt(courtId: string, payload: unknown) {
+    const existing = await this.prisma.venueCourt.findUnique({ where: { id: courtId } });
+
+    if (!existing) {
+      throw new NotFoundException(`Court ${courtId} not found`);
+    }
+
+    const body = asRecord(payload);
+    await this.prisma.venueCourt.update({
+      where: { id: courtId },
+      data: {
+        name: optionalString(body.name),
+        sortOrder: optionalInteger(body.sortOrder),
+        isActive: optionalBoolean(body.isActive),
+      },
+    });
+
+    return this.getVenueDetail(existing.venueId);
+  }
+
+  async deleteCourt(courtId: string) {
+    const existing = await this.prisma.venueCourt.findUnique({
+      where: { id: courtId },
+      include: { _count: { select: { matches: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Court ${courtId} not found`);
+    }
+
+    if (existing._count.matches > 0) {
+      throw new ConflictException('Cannot delete a court that is used by matches');
+    }
+
+    await this.prisma.venueCourt.delete({ where: { id: courtId } });
+
+    return this.getVenueDetail(existing.venueId);
+  }
+
+  async createSlot(venueId: string, payload: unknown) {
+    await this.requireVenue(venueId);
+    const body = asRecord(payload);
+    const startTime = this.parseSlotMinutes(body.startTime, 'startTime');
+    const endTime = this.parseSlotMinutes(body.endTime, 'endTime');
+
+    if (endTime <= startTime) {
+      throw new BadRequestException('endTime must be greater than startTime');
+    }
+
+    await this.prisma.venueAvailabilitySlot.create({
+      data: {
+        venueId,
+        label: requiredString(body, 'label'),
+        startTime,
+        endTime,
+        sortOrder: optionalInteger(body.sortOrder) ?? 0,
+        isActive: optionalBoolean(body.isActive) ?? true,
+      },
+    });
+
+    return this.getVenueDetail(venueId);
+  }
+
+  async updateSlot(slotId: string, payload: unknown) {
+    const existing = await this.prisma.venueAvailabilitySlot.findUnique({ where: { id: slotId } });
+
+    if (!existing) {
+      throw new NotFoundException(`Slot ${slotId} not found`);
+    }
+
+    const body = asRecord(payload);
+    const startTime = body.startTime === undefined ? undefined : this.parseSlotMinutes(body.startTime, 'startTime');
+    const endTime = body.endTime === undefined ? undefined : this.parseSlotMinutes(body.endTime, 'endTime');
+    const nextStart = startTime ?? existing.startTime;
+    const nextEnd = endTime ?? existing.endTime;
+
+    if (nextEnd <= nextStart) {
+      throw new BadRequestException('endTime must be greater than startTime');
+    }
+
+    await this.prisma.venueAvailabilitySlot.update({
+      where: { id: slotId },
+      data: {
+        label: optionalString(body.label),
+        startTime,
+        endTime,
+        sortOrder: optionalInteger(body.sortOrder),
+        isActive: optionalBoolean(body.isActive),
+      },
+    });
+
+    return this.getVenueDetail(existing.venueId);
+  }
+
+  async deleteSlot(slotId: string) {
+    const existing = await this.prisma.venueAvailabilitySlot.findUnique({
+      where: { id: slotId },
+      include: { _count: { select: { matches: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Slot ${slotId} not found`);
+    }
+
+    if (existing._count.matches > 0) {
+      throw new ConflictException('Cannot delete a slot that is used by matches');
+    }
+
+    await this.prisma.venueAvailabilitySlot.delete({ where: { id: slotId } });
+
+    return this.getVenueDetail(existing.venueId);
+  }
+
+  private async getVenueDetail(venueId: string) {
+    const venue = await this.prisma.venue.findUnique({
+      where: { id: venueId },
+      include: this.venueDetailInclude(),
+    });
+
+    if (!venue) {
+      throw new NotFoundException(`Venue ${venueId} not found`);
+    }
+
+    return this.mapVenue(venue);
+  }
+
+  private parseSlotMinutes(value: unknown, field: string) {
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < 24 * 60) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+
+      if (match) {
+        const hours = Number(match[1]);
+        const minutes = Number(match[2]);
+
+        if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+          return hours * 60 + minutes;
+        }
+      }
+    }
+
+    throw new BadRequestException(`${field} must be an integer minute count or "HH:MM" string`);
   }
 
   async createUser(payload: unknown) {
@@ -331,6 +485,202 @@ export class AdminService {
     return { ok: true, id };
   }
 
+  async listApplications(status?: string) {
+    const normalizedStatus = status?.trim();
+    const where =
+      normalizedStatus && ['pending', 'approved', 'rejected'].includes(normalizedStatus)
+        ? { status: normalizedStatus }
+        : undefined;
+
+    const applications = await this.prisma.matchApplication.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        match: {
+          select: {
+            id: true,
+            title: true,
+            venueName: true,
+            startTime: true,
+            openSlots: true,
+            maxPlayers: true,
+            hostUserId: true,
+            hostUser: {
+              select: {
+                nickname: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const applicantIds = [...new Set(applications.map((item) => item.userId))];
+    const applicants = applicantIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: applicantIds } },
+          select: {
+            id: true,
+            nickname: true,
+            phone: true,
+            city: true,
+            level: true,
+            creditScore: true,
+          },
+        })
+      : [];
+
+    const applicantMap = new Map(applicants.map((item) => [item.id, item]));
+
+    return {
+      items: applications.map((item) => ({
+        id: item.id,
+        matchId: item.matchId,
+        userId: item.userId,
+        status: item.status,
+        createdAt: item.createdAt.toISOString(),
+        decisionReason: item.decisionReason ?? undefined,
+        matchTitle: item.match.title,
+        matchVenueName: item.match.venueName,
+        matchStartTime: item.match.startTime.toISOString(),
+        matchOpenSlots: item.match.openSlots,
+        matchMaxPlayers: item.match.maxPlayers,
+        hostUserId: item.match.hostUserId,
+        hostNickname: item.match.hostUser.nickname,
+        hostPhone: item.match.hostUser.phone,
+        applicantNickname: applicantMap.get(item.userId)?.nickname ?? '球友',
+        applicantPhone: applicantMap.get(item.userId)?.phone ?? '',
+        applicantCity: applicantMap.get(item.userId)?.city ?? '',
+        applicantLevel: applicantMap.get(item.userId)?.level ?? '',
+        applicantCreditScore: applicantMap.get(item.userId)?.creditScore ?? 0,
+      })),
+    };
+  }
+
+  async approveApplication(applicationId: string) {
+    const application = await this.prisma.matchApplication.findUnique({
+      where: { id: applicationId },
+      include: { match: true },
+    });
+
+    if (!application) {
+      throw new NotFoundException(`Application ${applicationId} not found`);
+    }
+
+    if (application.status !== 'pending') {
+      throw new ConflictException(`application ${applicationId} is already ${application.status}`);
+    }
+
+    if (application.match.openSlots <= 0) {
+      throw new ConflictException(`match ${application.matchId} has no open slots`);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.matchApplication.update({
+        where: { id: applicationId },
+        data: { status: 'approved', decisionReason: null },
+      });
+
+      await tx.match.update({
+        where: { id: application.matchId },
+        data: { openSlots: { decrement: 1 } },
+      });
+
+      await tx.chatThreadParticipant.upsert({
+        where: {
+          threadId_userId: {
+            threadId: application.matchId,
+            userId: application.userId,
+          },
+        },
+        update: { role: 'member' },
+        create: {
+          threadId: application.matchId,
+          userId: application.userId,
+          role: 'member',
+          lastReadAt: null,
+        },
+      });
+
+      await tx.message.create({
+        data: {
+          userId: application.userId,
+          kind: 'system',
+          title: '申请已通过',
+          content: `你申请的${application.match.title}已通过，去局内聊天确认到场吧。`,
+          senderName: '系统',
+          status: 'approved',
+          matchId: application.matchId,
+        },
+      });
+
+      await tx.message.updateMany({
+        where: {
+          userId: application.match.hostUserId,
+          matchId: application.matchId,
+          senderId: application.userId,
+          kind: 'invite',
+          status: 'pending',
+        },
+        data: { status: 'approved', isRead: true },
+      });
+    });
+
+    return this.listApplications('pending');
+  }
+
+  async rejectApplication(applicationId: string, payload: unknown) {
+    const application = await this.prisma.matchApplication.findUnique({
+      where: { id: applicationId },
+      include: { match: { select: { id: true, title: true, hostUserId: true } } },
+    });
+
+    if (!application) {
+      throw new NotFoundException(`Application ${applicationId} not found`);
+    }
+
+    if (application.status !== 'pending') {
+      throw new ConflictException(`application ${applicationId} is already ${application.status}`);
+    }
+
+    const body = payload === undefined || payload === null ? {} : asRecord(payload);
+    const decisionReason =
+      optionalString(body.reason) || '这场球局当前席位更适合其他安排，你可以换个时间段继续约。';
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.matchApplication.update({
+        where: { id: applicationId },
+        data: { status: 'rejected', decisionReason },
+      });
+
+      await tx.message.create({
+        data: {
+          userId: application.userId,
+          kind: 'system',
+          title: '申请暂未通过',
+          content: decisionReason,
+          senderName: '系统',
+          status: 'rejected',
+          matchId: application.matchId,
+        },
+      });
+
+      await tx.message.updateMany({
+        where: {
+          userId: application.match.hostUserId,
+          matchId: application.matchId,
+          senderId: application.userId,
+          kind: 'invite',
+          status: 'pending',
+        },
+        data: { status: 'rejected', isRead: true },
+      });
+    });
+
+    return this.listApplications('pending');
+  }
+
   async createMatch(payload: unknown) {
     const body = asRecord(payload);
     const title = requiredString(body, 'title');
@@ -340,7 +690,6 @@ export class AdminService {
     const slotId = requiredString(body, 'slotId');
     const level = requiredString(body, 'level');
     const maxPlayers = optionalInteger(body.maxPlayers) ?? 4;
-    const id = `match-admin-${Date.now()}`;
 
     const match = await this.prisma.$transaction(async (tx) => {
       const venue = await tx.venue.findFirst({
@@ -372,7 +721,6 @@ export class AdminService {
 
       const created = await tx.match.create({
         data: {
-          id,
           title,
           venueName: `${venue.name} ${court.name}`,
           venueId,
@@ -392,8 +740,8 @@ export class AdminService {
 
       await tx.chatThread.create({
         data: {
-          id,
-          matchId: id,
+          id: created.id,
+          matchId: created.id,
           title,
           venueName: created.venueName,
           scheduledAt: created.startTime,
@@ -407,7 +755,7 @@ export class AdminService {
 
       await tx.chatThreadParticipant.create({
         data: {
-          threadId: id,
+          threadId: created.id,
           userId: hostUserId,
           role: 'host',
           lastReadAt: new Date(),
@@ -594,9 +942,16 @@ export class AdminService {
     district: string | null;
     distanceKm: number;
     isActive: boolean;
+    courts: Array<{ id: string; name: string; sortOrder: number; isActive: boolean }>;
+    availabilitySlots: Array<{
+      id: string;
+      label: string;
+      startTime: number;
+      endTime: number;
+      sortOrder: number;
+      isActive: boolean;
+    }>;
     _count: {
-      courts: number;
-      availabilitySlots: number;
       matches: number;
     };
   }) {
@@ -607,9 +962,23 @@ export class AdminService {
       district: venue.district,
       distanceKm: venue.distanceKm,
       isActive: venue.isActive,
-      courtCount: venue._count.courts,
-      slotCount: venue._count.availabilitySlots,
+      courtCount: venue.courts.length,
+      slotCount: venue.availabilitySlots.length,
       matchCount: venue._count.matches,
+      courts: venue.courts.map((court) => ({
+        id: court.id,
+        name: court.name,
+        sortOrder: court.sortOrder,
+        isActive: court.isActive,
+      })),
+      slots: venue.availabilitySlots.map((slot) => ({
+        id: slot.id,
+        label: slot.label,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        sortOrder: slot.sortOrder,
+        isActive: slot.isActive,
+      })),
     };
   }
 
@@ -623,15 +992,19 @@ export class AdminService {
     } as const;
   }
 
-  private venueCountsInclude() {
+  private venueDetailInclude() {
     return {
+      courts: {
+        orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+      },
+      availabilitySlots: {
+        orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
+      },
       _count: {
         select: {
-          courts: true,
-          availabilitySlots: true,
           matches: true,
         },
       },
-    } as const;
+    } satisfies Prisma.VenueInclude;
   }
 }

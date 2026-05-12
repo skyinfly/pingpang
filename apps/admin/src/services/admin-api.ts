@@ -38,6 +38,22 @@ export type AdminUserRow = {
   joinedMatches: number;
 };
 
+export type AdminVenueCourt = {
+  id: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+export type AdminVenueSlot = {
+  id: string;
+  label: string;
+  startTime: number;
+  endTime: number;
+  sortOrder: number;
+  isActive: boolean;
+};
+
 export type AdminVenueRow = {
   id: string;
   name: string;
@@ -48,6 +64,8 @@ export type AdminVenueRow = {
   courtCount: number;
   slotCount: number;
   matchCount: number;
+  courts: AdminVenueCourt[];
+  slots: AdminVenueSlot[];
 };
 
 export type AdminVenuePayload = {
@@ -56,6 +74,20 @@ export type AdminVenuePayload = {
   district?: string;
   distanceKm: number;
   isActive: boolean;
+};
+
+export type AdminCourtPayload = {
+  name?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+};
+
+export type AdminSlotPayload = {
+  label?: string;
+  startTime?: string | number;
+  endTime?: string | number;
+  sortOrder?: number;
+  isActive?: boolean;
 };
 
 export type AdminUserPayload = {
@@ -67,6 +99,28 @@ export type AdminUserPayload = {
 };
 
 export type AdminCreateUserPayload = Required<AdminUserPayload>;
+
+export type AdminApplicationRow = {
+  id: string;
+  matchId: string;
+  userId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  decisionReason?: string;
+  matchTitle: string;
+  matchVenueName: string;
+  matchStartTime: string;
+  matchOpenSlots: number;
+  matchMaxPlayers: number;
+  hostUserId: string;
+  hostNickname: string;
+  hostPhone: string;
+  applicantNickname: string;
+  applicantPhone: string;
+  applicantCity: string;
+  applicantLevel: string;
+  applicantCreditScore: number;
+};
 
 export type AdminMatchPayload = {
   title?: string;
@@ -151,7 +205,36 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
     createMatch: (payload: Required<AdminMatchPayload>) => send<AdminMatchRow>('POST', '/admin/matches', payload),
     updateMatch: (id: string, payload: AdminMatchPayload) => send<AdminMatchRow>('PATCH', `/admin/matches/${id}`, payload),
     deleteMatch: (id: string) => remove(`/admin/matches/${id}`),
+    createCourt: (venueId: string, payload: Required<Pick<AdminCourtPayload, 'name'>> & AdminCourtPayload) =>
+      send<AdminVenueRow>('POST', `/admin/venues/${venueId}/courts`, payload),
+    updateCourt: (courtId: string, payload: AdminCourtPayload) =>
+      send<AdminVenueRow>('PATCH', `/admin/courts/${courtId}`, payload),
+    deleteCourt: (courtId: string) => removeReturning<AdminVenueRow>(`/admin/courts/${courtId}`),
+    createSlot: (
+      venueId: string,
+      payload: Required<Pick<AdminSlotPayload, 'label' | 'startTime' | 'endTime'>> & AdminSlotPayload,
+    ) => send<AdminVenueRow>('POST', `/admin/venues/${venueId}/slots`, payload),
+    updateSlot: (slotId: string, payload: AdminSlotPayload) =>
+      send<AdminVenueRow>('PATCH', `/admin/slots/${slotId}`, payload),
+    deleteSlot: (slotId: string) => removeReturning<AdminVenueRow>(`/admin/slots/${slotId}`),
+    listApplications: (status: 'pending' | 'approved' | 'rejected' = 'pending') =>
+      get<{ items: AdminApplicationRow[] }>(`/admin/applications?status=${status}`),
+    approveApplication: (applicationId: string) =>
+      send<{ items: AdminApplicationRow[] }>('POST', `/admin/applications/${applicationId}/approve`, {}),
+    rejectApplication: (applicationId: string, reason?: string) =>
+      send<{ items: AdminApplicationRow[] }>('POST', `/admin/applications/${applicationId}/reject`, reason ? { reason } : {}),
   };
+
+  async function removeReturning<T>(path: string) {
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Admin-Token': options.tokenProvider(),
+      },
+    });
+
+    return readJson<T>(response as Response);
+  }
 }
 
 export function resolveAdminApiBaseUrl() {

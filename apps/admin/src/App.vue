@@ -1,33 +1,56 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import {
+  AdminApplicationRow,
   AdminMatchRow,
   AdminSummary,
   AdminUserRow,
+  AdminVenueCourt,
   AdminVenueRow,
+  AdminVenueSlot,
   createAdminApiClient,
   resolveAdminApiBaseUrl,
 } from './services/admin-api';
 import { DEFAULT_ADMIN_TOKEN, getStoredAdminToken, saveAdminToken } from './services/admin-token';
 
-type TabKey = 'matches' | 'users' | 'venues';
+type TabKey = 'applications' | 'matches' | 'users' | 'venues';
 type EditorState = {
   resource: TabKey;
   id?: string;
 };
+type CourtEditorState = { venueId: string; id?: string };
+type SlotEditorState = { venueId: string; id?: string };
 
 const token = ref(getStoredAdminToken() || DEFAULT_ADMIN_TOKEN);
-const activeTab = ref<TabKey>('matches');
+const activeTab = ref<TabKey>('applications');
 const loading = ref(true);
 const savingToken = ref(false);
 const savingEditor = ref(false);
+const savingChild = ref(false);
+const decidingApplicationId = ref<string | null>(null);
 const errorMessage = ref('');
 const summary = ref<AdminSummary | null>(null);
 const matches = ref<AdminMatchRow[]>([]);
 const users = ref<AdminUserRow[]>([]);
 const venues = ref<AdminVenueRow[]>([]);
+const applications = ref<AdminApplicationRow[]>([]);
 const editor = ref<EditorState | null>(null);
 const form = ref<Record<string, string | number | boolean>>({});
+const expandedVenueId = ref<string | null>(null);
+const courtEditor = ref<CourtEditorState | null>(null);
+const slotEditor = ref<SlotEditorState | null>(null);
+const courtForm = ref<{ name: string; sortOrder: number; isActive: boolean }>({
+  name: '',
+  sortOrder: 0,
+  isActive: true,
+});
+const slotForm = ref<{ label: string; startTime: string; endTime: string; sortOrder: number; isActive: boolean }>({
+  label: '',
+  startTime: '19:00',
+  endTime: '20:30',
+  sortOrder: 0,
+  isActive: true,
+});
 
 const api = computed(() =>
   createAdminApiClient({
@@ -45,26 +68,88 @@ const metricCards = computed(() => [
   { label: '评价数量', value: summary.value?.reviews ?? 0, hint: '信用体系样本' },
 ]);
 
+const selectedMatchVenue = computed<AdminVenueRow | null>(() => {
+  const venueId = String(form.value.venueId ?? '');
+  return venues.value.find((venue) => venue.id === venueId) ?? null;
+});
+
+watch(
+  () => form.value.venueId,
+  () => {
+    if (editor.value?.resource !== 'matches' || editor.value.id) {
+      return;
+    }
+
+    const venue = selectedMatchVenue.value;
+    const courts = venue?.courts.filter((court) => court.isActive) ?? [];
+    const slots = venue?.slots.filter((slot) => slot.isActive) ?? [];
+    const currentCourt = String(form.value.courtId ?? '');
+    const currentSlot = String(form.value.slotId ?? '');
+
+    if (!courts.some((court) => court.id === currentCourt)) {
+      form.value.courtId = courts[0]?.id ?? '';
+    }
+
+    if (!slots.some((slot) => slot.id === currentSlot)) {
+      form.value.slotId = slots[0]?.id ?? '';
+    }
+  },
+);
+
 async function loadDashboard() {
   loading.value = true;
   errorMessage.value = '';
 
   try {
-    const [summaryPayload, matchPayload, userPayload, venuePayload] = await Promise.all([
+    const [summaryPayload, matchPayload, userPayload, venuePayload, applicationPayload] = await Promise.all([
       api.value.getSummary(),
       api.value.listMatches(),
       api.value.listUsers(),
       api.value.listVenues(),
+      api.value.listApplications('pending'),
     ]);
 
     summary.value = summaryPayload;
     matches.value = matchPayload.items;
     users.value = userPayload.items;
     venues.value = venuePayload.items;
+    applications.value = applicationPayload.items;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '后台数据请求失败，请稍后重试';
   } finally {
     loading.value = false;
+  }
+}
+
+async function approveApplication(applicationId: string) {
+  decidingApplicationId.value = applicationId;
+  errorMessage.value = '';
+
+  try {
+    const response = await api.value.approveApplication(applicationId);
+    applications.value = response.items;
+    const [matchPayload] = await Promise.all([api.value.listMatches(), refreshSummary()]);
+    matches.value = matchPayload.items;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '通过申请失败，请稍后再试';
+  } finally {
+    decidingApplicationId.value = null;
+  }
+}
+
+async function rejectApplication(applicationId: string) {
+  decidingApplicationId.value = applicationId;
+  errorMessage.value = '';
+
+  try {
+    const reason = window.prompt('选填：拒绝原因（留空使用默认文案）') ?? undefined;
+    const response = await api.value.rejectApplication(applicationId, reason?.trim() ? reason.trim() : undefined);
+    applications.value = response.items;
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '拒绝申请失败，请稍后再试';
+  } finally {
+    decidingApplicationId.value = null;
   }
 }
 
@@ -88,6 +173,9 @@ function switchTab(tab: TabKey) {
   activeTab.value = tab;
   editor.value = null;
   form.value = {};
+  expandedVenueId.value = null;
+  courtEditor.value = null;
+  slotEditor.value = null;
 }
 
 function openCreate(resource: TabKey) {
@@ -103,12 +191,16 @@ function openCreate(resource: TabKey) {
     return;
   }
 
+  const defaultVenue = venues.value.find((venue) => venue.isActive) ?? venues.value[0] ?? null;
+  const defaultCourt = defaultVenue?.courts.find((court) => court.isActive) ?? defaultVenue?.courts[0];
+  const defaultSlot = defaultVenue?.slots.find((slot) => slot.isActive) ?? defaultVenue?.slots[0];
+
   form.value = {
     title: '',
     hostUserId: users.value[0]?.id ?? '',
-    venueId: venues.value[0]?.id ?? '',
-    courtId: '',
-    slotId: '',
+    venueId: defaultVenue?.id ?? '',
+    courtId: defaultCourt?.id ?? '',
+    slotId: defaultSlot?.id ?? '',
     level: 'intermediate',
     maxPlayers: 4,
   };
@@ -246,6 +338,10 @@ async function deleteRow(resource: TabKey, id: string) {
     if (resource === 'venues') {
       await api.value.deleteVenue(id);
       venues.value = venues.value.filter((item) => item.id !== id);
+
+      if (expandedVenueId.value === id) {
+        expandedVenueId.value = null;
+      }
     }
 
     if (resource === 'users') {
@@ -262,6 +358,138 @@ async function deleteRow(resource: TabKey, id: string) {
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '删除失败，该数据可能仍有关联记录';
   }
+}
+
+function toggleVenueExpanded(venueId: string) {
+  expandedVenueId.value = expandedVenueId.value === venueId ? null : venueId;
+  courtEditor.value = null;
+  slotEditor.value = null;
+}
+
+function openCourtCreate(venueId: string) {
+  courtEditor.value = { venueId };
+  courtForm.value = { name: '', sortOrder: 0, isActive: true };
+}
+
+function openCourtEdit(venueId: string, court: AdminVenueCourt) {
+  courtEditor.value = { venueId, id: court.id };
+  courtForm.value = { name: court.name, sortOrder: court.sortOrder, isActive: court.isActive };
+}
+
+function closeCourtEditor() {
+  courtEditor.value = null;
+}
+
+function openSlotCreate(venueId: string) {
+  slotEditor.value = { venueId };
+  slotForm.value = {
+    label: '',
+    startTime: '19:00',
+    endTime: '20:30',
+    sortOrder: 0,
+    isActive: true,
+  };
+}
+
+function openSlotEdit(venueId: string, slot: AdminVenueSlot) {
+  slotEditor.value = { venueId, id: slot.id };
+  slotForm.value = {
+    label: slot.label,
+    startTime: formatMinutes(slot.startTime),
+    endTime: formatMinutes(slot.endTime),
+    sortOrder: slot.sortOrder,
+    isActive: slot.isActive,
+  };
+}
+
+function closeSlotEditor() {
+  slotEditor.value = null;
+}
+
+async function saveCourt() {
+  if (!courtEditor.value) {
+    return;
+  }
+
+  const { venueId, id } = courtEditor.value;
+  savingChild.value = true;
+  errorMessage.value = '';
+
+  try {
+    const payload = {
+      name: courtForm.value.name.trim(),
+      sortOrder: Number(courtForm.value.sortOrder) || 0,
+      isActive: Boolean(courtForm.value.isActive),
+    };
+    const saved = id ? await api.value.updateCourt(id, payload) : await api.value.createCourt(venueId, payload);
+    upsertById(venues.value, saved);
+    courtEditor.value = null;
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '球台保存失败';
+  } finally {
+    savingChild.value = false;
+  }
+}
+
+async function deleteCourt(courtId: string) {
+  errorMessage.value = '';
+
+  try {
+    const saved = await api.value.deleteCourt(courtId);
+    upsertById(venues.value, saved);
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '球台仍在被球局引用，无法删除';
+  }
+}
+
+async function saveSlot() {
+  if (!slotEditor.value) {
+    return;
+  }
+
+  const { venueId, id } = slotEditor.value;
+  savingChild.value = true;
+  errorMessage.value = '';
+
+  try {
+    const payload = {
+      label: slotForm.value.label.trim(),
+      startTime: slotForm.value.startTime,
+      endTime: slotForm.value.endTime,
+      sortOrder: Number(slotForm.value.sortOrder) || 0,
+      isActive: Boolean(slotForm.value.isActive),
+    };
+    const saved = id ? await api.value.updateSlot(id, payload) : await api.value.createSlot(venueId, payload);
+    upsertById(venues.value, saved);
+    slotEditor.value = null;
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '时段保存失败，请检查 HH:MM 格式';
+  } finally {
+    savingChild.value = false;
+  }
+}
+
+async function deleteSlot(slotId: string) {
+  errorMessage.value = '';
+
+  try {
+    const saved = await api.value.deleteSlot(slotId);
+    upsertById(venues.value, saved);
+    void refreshSummary();
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '时段仍在被球局引用，无法删除';
+  }
+}
+
+function formatMinutes(value: number) {
+  const safe = Math.max(0, Math.min(24 * 60 - 1, Math.round(value)));
+  const hours = Math.floor(safe / 60);
+  const minutes = safe % 60;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
 function formatDateTime(value: string) {
@@ -320,6 +548,15 @@ onMounted(() => {
       <section class="panel">
         <div class="panel-toolbar">
           <div class="tabs" role="tablist" aria-label="后台数据表">
+            <button
+              data-testid="tab-applications"
+              :class="{ active: activeTab === 'applications' }"
+              type="button"
+              @click="switchTab('applications')"
+            >
+              待审报名
+              <span v-if="applications.length" class="badge">{{ applications.length }}</span>
+            </button>
             <button
               data-testid="tab-matches"
               :class="{ active: activeTab === 'matches' }"
@@ -399,10 +636,52 @@ onMounted(() => {
 
           <div v-if="editor.resource === 'matches'" class="form-grid">
             <label>标题<input v-model="form.title" required /></label>
-            <label v-if="!editor.id">主理人ID<input v-model="form.hostUserId" required /></label>
-            <label v-if="!editor.id">球馆ID<input v-model="form.venueId" required /></label>
-            <label v-if="!editor.id">球台ID<input v-model="form.courtId" required /></label>
-            <label v-if="!editor.id">时段ID<input v-model="form.slotId" required /></label>
+            <template v-if="!editor.id">
+              <label>
+                主理人
+                <select data-testid="match-host" v-model="form.hostUserId" required>
+                  <option v-for="user in users" :key="user.id" :value="user.id">
+                    {{ user.nickname }} / {{ user.phone }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                球馆
+                <select data-testid="match-venue" v-model="form.venueId" required>
+                  <option v-for="venue in venues" :key="venue.id" :value="venue.id" :disabled="!venue.isActive">
+                    {{ venue.name }}{{ venue.isActive ? '' : '（已停用）' }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                球台
+                <select data-testid="match-court" v-model="form.courtId" required :disabled="!selectedMatchVenue">
+                  <option value="" disabled>请选择球台</option>
+                  <option
+                    v-for="court in selectedMatchVenue?.courts ?? []"
+                    :key="court.id"
+                    :value="court.id"
+                    :disabled="!court.isActive"
+                  >
+                    {{ court.name }}{{ court.isActive ? '' : '（已停用）' }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                时段
+                <select data-testid="match-slot" v-model="form.slotId" required :disabled="!selectedMatchVenue">
+                  <option value="" disabled>请选择时段</option>
+                  <option
+                    v-for="slot in selectedMatchVenue?.slots ?? []"
+                    :key="slot.id"
+                    :value="slot.id"
+                    :disabled="!slot.isActive"
+                  >
+                    {{ slot.label }} {{ formatMinutes(slot.startTime) }}–{{ formatMinutes(slot.endTime) }}{{ slot.isActive ? '' : '（已停用）' }}
+                  </option>
+                </select>
+              </label>
+            </template>
             <label>水平<input v-model="form.level" required /></label>
             <label>人数<input v-model.number="form.maxPlayers" type="number" min="1" /></label>
           </div>
@@ -411,6 +690,63 @@ onMounted(() => {
             {{ savingEditor ? '保存中' : '保存' }}
           </button>
         </form>
+
+        <div v-if="activeTab === 'applications'" class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>申请人</th>
+                <th>球局</th>
+                <th>主理人</th>
+                <th>开始时间</th>
+                <th>席位</th>
+                <th>申请时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="application in applications" :key="application.id">
+                <td>
+                  <strong>{{ application.applicantNickname }}</strong>
+                  <small>{{ application.applicantPhone }} · {{ application.applicantCity }} · {{ application.applicantLevel }}</small>
+                </td>
+                <td>
+                  <strong>{{ application.matchTitle }}</strong>
+                  <small>{{ application.matchVenueName }}</small>
+                </td>
+                <td>
+                  {{ application.hostNickname }}
+                  <small>{{ application.hostPhone }}</small>
+                </td>
+                <td>{{ formatDateTime(application.matchStartTime) }}</td>
+                <td>{{ application.matchMaxPlayers - application.matchOpenSlots }}/{{ application.matchMaxPlayers }}</td>
+                <td>{{ formatDateTime(application.createdAt) }}</td>
+                <td class="actions">
+                  <button
+                    type="button"
+                    class="primary-action"
+                    :data-testid="`approve-${application.id}`"
+                    :disabled="decidingApplicationId === application.id || application.matchOpenSlots <= 0"
+                    @click="approveApplication(application.id)"
+                  >
+                    {{ decidingApplicationId === application.id ? '处理中' : '通过' }}
+                  </button>
+                  <button
+                    type="button"
+                    :data-testid="`reject-${application.id}`"
+                    :disabled="decidingApplicationId === application.id"
+                    @click="rejectApplication(application.id)"
+                  >
+                    拒绝
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!applications.length">
+                <td colspan="7" class="empty-row">暂无待处理报名，干得漂亮 ✨</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div v-if="activeTab === 'matches'" class="table-wrap">
           <table>
@@ -498,25 +834,139 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="venue in venues" :key="venue.id">
-                <td>
-                  <strong>{{ venue.name }}</strong>
-                  <small>{{ venue.city }}</small>
-                </td>
-                <td>{{ venue.district || '未填写' }}</td>
-                <td>{{ venue.distanceKm }}km</td>
-                <td>
-                  <span class="status" :class="{ muted: !venue.isActive }">
-                    {{ venue.isActive ? '启用中' : '已停用' }}
-                  </span>
-                </td>
-                <td>{{ venue.courtCount }} / {{ venue.slotCount }}</td>
-                <td>{{ venue.matchCount }}</td>
-                <td class="actions">
-                  <button type="button" @click="openEdit('venues', venue)">编辑</button>
-                  <button type="button" @click="deleteRow('venues', venue.id)">删除</button>
-                </td>
-              </tr>
+              <template v-for="venue in venues" :key="venue.id">
+                <tr>
+                  <td>
+                    <strong>{{ venue.name }}</strong>
+                    <small>{{ venue.city }}</small>
+                  </td>
+                  <td>{{ venue.district || '未填写' }}</td>
+                  <td>{{ venue.distanceKm }}km</td>
+                  <td>
+                    <span class="status" :class="{ muted: !venue.isActive }">
+                      {{ venue.isActive ? '启用中' : '已停用' }}
+                    </span>
+                  </td>
+                  <td>{{ venue.courtCount }} / {{ venue.slotCount }}</td>
+                  <td>{{ venue.matchCount }}</td>
+                  <td class="actions">
+                    <button
+                      type="button"
+                      :data-testid="`expand-${venue.id}`"
+                      @click="toggleVenueExpanded(venue.id)"
+                    >
+                      {{ expandedVenueId === venue.id ? '收起' : '配置子项' }}
+                    </button>
+                    <button type="button" @click="openEdit('venues', venue)">编辑</button>
+                    <button type="button" @click="deleteRow('venues', venue.id)">删除</button>
+                  </td>
+                </tr>
+                <tr v-if="expandedVenueId === venue.id" class="detail-row">
+                  <td colspan="7">
+                    <div class="detail-grid">
+                      <article class="detail-block">
+                        <header>
+                          <h3>球台 ({{ venue.courts.length }})</h3>
+                          <button
+                            type="button"
+                            class="ghost-action"
+                            :data-testid="`create-court-${venue.id}`"
+                            @click="openCourtCreate(venue.id)"
+                          >
+                            新增球台
+                          </button>
+                        </header>
+                        <form
+                          v-if="courtEditor && courtEditor.venueId === venue.id"
+                          class="inline-editor"
+                          :data-testid="`court-form-${venue.id}`"
+                          @submit.prevent="saveCourt"
+                        >
+                          <label>名称<input v-model="courtForm.name" :data-testid="`court-name-${venue.id}`" required /></label>
+                          <label>排序<input v-model.number="courtForm.sortOrder" type="number" /></label>
+                          <label class="checkbox">
+                            <input v-model="courtForm.isActive" type="checkbox" />
+                            启用
+                          </label>
+                          <div class="inline-editor-actions">
+                            <button type="submit" :disabled="savingChild">
+                              {{ savingChild ? '保存中' : '保存' }}
+                            </button>
+                            <button type="button" @click="closeCourtEditor">取消</button>
+                          </div>
+                        </form>
+                        <ul class="child-list">
+                          <li v-for="court in venue.courts" :key="court.id">
+                            <span>
+                              <strong>{{ court.name }}</strong>
+                              <small>排序 {{ court.sortOrder }}</small>
+                            </span>
+                            <span class="status" :class="{ muted: !court.isActive }">
+                              {{ court.isActive ? '启用' : '停用' }}
+                            </span>
+                            <span class="row-actions">
+                              <button type="button" @click="openCourtEdit(venue.id, court)">编辑</button>
+                              <button type="button" @click="deleteCourt(court.id)">删除</button>
+                            </span>
+                          </li>
+                          <li v-if="!venue.courts.length" class="empty">还没有球台，新增后才能创建球局。</li>
+                        </ul>
+                      </article>
+
+                      <article class="detail-block">
+                        <header>
+                          <h3>时段 ({{ venue.slots.length }})</h3>
+                          <button
+                            type="button"
+                            class="ghost-action"
+                            :data-testid="`create-slot-${venue.id}`"
+                            @click="openSlotCreate(venue.id)"
+                          >
+                            新增时段
+                          </button>
+                        </header>
+                        <form
+                          v-if="slotEditor && slotEditor.venueId === venue.id"
+                          class="inline-editor"
+                          :data-testid="`slot-form-${venue.id}`"
+                          @submit.prevent="saveSlot"
+                        >
+                          <label>标签<input v-model="slotForm.label" :data-testid="`slot-label-${venue.id}`" required /></label>
+                          <label>开始<input v-model="slotForm.startTime" :data-testid="`slot-start-${venue.id}`" placeholder="HH:MM" required /></label>
+                          <label>结束<input v-model="slotForm.endTime" :data-testid="`slot-end-${venue.id}`" placeholder="HH:MM" required /></label>
+                          <label>排序<input v-model.number="slotForm.sortOrder" type="number" /></label>
+                          <label class="checkbox">
+                            <input v-model="slotForm.isActive" type="checkbox" />
+                            启用
+                          </label>
+                          <div class="inline-editor-actions">
+                            <button type="submit" :disabled="savingChild">
+                              {{ savingChild ? '保存中' : '保存' }}
+                            </button>
+                            <button type="button" @click="closeSlotEditor">取消</button>
+                          </div>
+                        </form>
+                        <ul class="child-list">
+                          <li v-for="slot in venue.slots" :key="slot.id">
+                            <span>
+                              <strong>{{ slot.label }}</strong>
+                              <small>{{ formatMinutes(slot.startTime) }}–{{ formatMinutes(slot.endTime) }}</small>
+                            </span>
+                            <span class="status" :class="{ muted: !slot.isActive }">
+                              {{ slot.isActive ? '启用' : '停用' }}
+                            </span>
+                            <span class="row-actions">
+                              <button type="button" @click="openSlotEdit(venue.id, slot)">编辑</button>
+                              <button type="button" @click="deleteSlot(slot.id)">删除</button>
+                            </span>
+                          </li>
+                          <li v-if="!venue.slots.length" class="empty">还没有时段，新增后才能创建球局。</li>
+                        </ul>
+                      </article>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -541,7 +991,8 @@ onMounted(() => {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -613,7 +1064,9 @@ h1 {
 }
 
 .token-row input,
-.form-grid input {
+.form-grid input,
+.form-grid select,
+.inline-editor input {
   min-width: 0;
   width: 100%;
   border: 1px solid #ced8cf;
@@ -626,7 +1079,10 @@ h1 {
 .tabs button,
 .primary-action,
 .actions button,
-.editor-card header button {
+.editor-card header button,
+.inline-editor button,
+.row-actions button,
+.ghost-action {
   border: 0;
   border-radius: 16px;
   padding: 12px 16px;
@@ -637,7 +1093,9 @@ h1 {
 }
 
 .actions button,
-.editor-card header button {
+.editor-card header button,
+.row-actions button,
+.ghost-action {
   background: rgba(24, 59, 42, 0.1);
   color: #183b2a;
 }
@@ -783,5 +1241,116 @@ td small {
 .status.muted {
   background: #eeeeee;
   color: #7a7a7a;
+}
+
+.detail-row td {
+  background: rgba(232, 240, 232, 0.45);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.detail-block {
+  border: 1px solid rgba(29, 52, 39, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.detail-block header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.detail-block h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.child-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.child-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(29, 52, 39, 0.08);
+  border-radius: 14px;
+  background: #fffdf7;
+}
+
+.child-list li.empty {
+  display: block;
+  text-align: center;
+  color: #7a8780;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.inline-editor {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.inline-editor label {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #45554c;
+}
+
+.inline-editor .checkbox {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.inline-editor-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+}
+
+.ghost-action {
+  background: transparent;
+  border: 1px solid rgba(24, 59, 42, 0.4);
+}
+
+.badge {
+  display: inline-block;
+  min-width: 22px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #d04a3a;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.empty-row {
+  padding: 36px 20px;
+  text-align: center;
+  color: #6f7b73;
 }
 </style>

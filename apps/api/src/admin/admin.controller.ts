@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminTokenGuard } from './admin-token.guard';
 
@@ -70,5 +70,50 @@ export class AdminController {
   @Delete('venues/:id')
   deleteVenue(@Param('id') id: string) {
     return this.adminService.deleteVenue(id);
+  }
+
+  @Post('venues/:venueId/courts')
+  createCourt(@Param('venueId') venueId: string, @Body() body: unknown) {
+    return this.adminService.createCourt(venueId, body);
+  }
+
+  @Patch('courts/:id')
+  updateCourt(@Param('id') id: string, @Body() body: unknown) {
+    return this.adminService.updateCourt(id, body);
+  }
+
+  @Delete('courts/:id')
+  deleteCourt(@Param('id') id: string) {
+    return this.adminService.deleteCourt(id);
+  }
+
+  @Post('venues/:venueId/slots')
+  createSlot(@Param('venueId') venueId: string, @Body() body: unknown) {
+    return this.adminService.createSlot(venueId, body);
+  }
+
+  @Patch('slots/:id')
+  updateSlot(@Param('id') id: string, @Body() body: unknown) {
+    return this.adminService.updateSlot(id, body);
+  }
+
+  @Delete('slots/:id')
+  deleteSlot(@Param('id') id: string) {
+    return this.adminService.deleteSlot(id);
+  }
+
+  @Get('applications')
+  listApplications(@Query('status') status?: string) {
+    return this.adminService.listApplications(status);
+  }
+
+  @Post('applications/:id/approve')
+  approveApplication(@Param('id') id: string) {
+    return this.adminService.approveApplication(id);
+  }
+
+  @Post('applications/:id/reject')
+  rejectApplication(@Param('id') id: string, @Body() body: unknown) {
+    return this.adminService.rejectApplication(id, body);
   }
 }
