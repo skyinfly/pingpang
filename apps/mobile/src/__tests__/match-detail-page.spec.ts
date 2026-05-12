@@ -33,7 +33,7 @@ describe('MatchDetailPage', () => {
             id: 'match-seed-1',
             title: '徐汇晚间上分局',
             venueName: '徐家汇活力馆 3 号台',
-            startTime: '2026-04-17T11:30:00.000Z',
+            startTime: '2099-04-17T11:30:00.000Z',
             distanceKm: 1.8,
             maxPlayers: 4,
             openSlots: 2,
@@ -126,7 +126,7 @@ describe('MatchDetailPage', () => {
             id: 'match-seed-1',
             title: '徐汇晚间上分局',
             venueName: '徐家汇活力馆 3 号台',
-            startTime: '2026-04-17T11:30:00.000Z',
+            startTime: '2099-04-17T11:30:00.000Z',
             distanceKm: 1.8,
             maxPlayers: 4,
             openSlots: 2,
@@ -281,7 +281,7 @@ describe('MatchDetailPage', () => {
             id: 'match-seed-1',
             title: '徐汇晚间上分局',
             venueName: '徐家汇活力馆 3 号台',
-            startTime: '2026-04-17T11:30:00.000Z',
+            startTime: '2099-04-17T11:30:00.000Z',
             distanceKm: 1.8,
             maxPlayers: 4,
             openSlots: 2,
@@ -412,7 +412,7 @@ describe('MatchDetailPage', () => {
             id: 'match-seed-1',
             title: '徐汇晚间上分局',
             venueName: '徐家汇活力馆 3 号台',
-            startTime: '2026-04-17T11:30:00.000Z',
+            startTime: '2099-04-17T11:30:00.000Z',
             distanceKm: 1.8,
             maxPlayers: 4,
             openSlots: 2,
@@ -502,7 +502,7 @@ describe('MatchDetailPage', () => {
                   id: 'match-joined-1',
                   title: '我参加的静安午休局',
                   venueName: '静安寺白领馆 2 号台',
-                  startTime: '2026-04-24T12:30:00+08:00',
+                  startTime: '2099-04-24T12:30:00+08:00',
                   distanceKm: 3.2,
                   maxPlayers: 4,
                   openSlots: 1,
@@ -538,7 +538,7 @@ describe('MatchDetailPage', () => {
             id: 'match-joined-1',
             title: '我参加的静安午休局',
             venueName: '静安寺白领馆 2 号台',
-            startTime: '2026-04-24T12:30:00+08:00',
+            startTime: '2099-04-24T12:30:00+08:00',
             distanceKm: 3.2,
             maxPlayers: 4,
             openSlots: 1,
@@ -633,7 +633,7 @@ describe('MatchDetailPage', () => {
             id: 'match-rejected-1',
             title: '静安午休补位局',
             venueName: '静安寺白领馆 2号台',
-            startTime: '2026-04-24T12:30:00+08:00',
+            startTime: '2099-04-24T12:30:00+08:00',
             distanceKm: 3.2,
             maxPlayers: 4,
             openSlots: 1,
@@ -682,5 +682,159 @@ describe('MatchDetailPage', () => {
     expect(switchTab).toHaveBeenCalledWith({
       url: '/pages/square/index',
     });
+  });
+
+  it('renders a started-match state instead of join CTA when startTime is in the past', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+
+    window.location.hash = '#/pages/match-detail/index?id=match-past-1';
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        success,
+      }: {
+        url: string;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        if (url.endsWith('/matches/joined')) {
+          success({ statusCode: 200, data: { items: [] } });
+          return;
+        }
+
+        if (url.endsWith('/matches/match-past-1/my-application')) {
+          success({ statusCode: 200, data: { status: 'none' } });
+          return;
+        }
+
+        success({
+          statusCode: 200,
+          data: {
+            id: 'match-past-1',
+            title: '昨天的练球局',
+            venueName: '徐家汇活力馆 3 号台',
+            startTime: '2000-01-01T11:30:00.000Z',
+            distanceKm: 1.8,
+            maxPlayers: 4,
+            openSlots: 2,
+            hostCreditScore: 97,
+            level: 'intermediate',
+            matchRate: 93,
+            city: '上海',
+            score: 66,
+            hostUserId: 'user-reviewee-1',
+          },
+        });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(MatchDetailPage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('球局已开打');
+    });
+
+    const cta = wrapper.get('[data-testid="join-match"]');
+    expect((cta.element as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('renders a full-match state when openSlots is zero', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+
+    window.location.hash = '#/pages/match-detail/index?id=match-full-1';
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        success,
+      }: {
+        url: string;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        if (url.endsWith('/matches/joined')) {
+          success({ statusCode: 200, data: { items: [] } });
+          return;
+        }
+
+        if (url.endsWith('/matches/match-full-1/my-application')) {
+          success({ statusCode: 200, data: { status: 'none' } });
+          return;
+        }
+
+        success({
+          statusCode: 200,
+          data: {
+            id: 'match-full-1',
+            title: '满员练球局',
+            venueName: '徐家汇活力馆 3 号台',
+            startTime: '2099-04-24T11:30:00.000Z',
+            distanceKm: 1.8,
+            maxPlayers: 4,
+            openSlots: 0,
+            hostCreditScore: 97,
+            level: 'intermediate',
+            matchRate: 93,
+            city: '上海',
+            score: 66,
+            hostUserId: 'user-reviewee-1',
+          },
+        });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(MatchDetailPage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('席位已满');
+    });
+
+    const cta = wrapper.get('[data-testid="join-match"]');
+    expect((cta.element as HTMLButtonElement).disabled).toBe(true);
   });
 });

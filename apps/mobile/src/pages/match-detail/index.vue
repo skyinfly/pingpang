@@ -54,6 +54,15 @@ const isJoined = computed(() =>
 const isMember = computed(() => isJoined.value || myApplicationStatus.value.status === 'approved');
 const isRejected = computed(() => myApplicationStatus.value.status === 'rejected');
 const isPendingApplication = computed(() => myApplicationStatus.value.status === 'pending');
+const isStarted = computed(() => {
+  if (!match.value) {
+    return false;
+  }
+
+  const startedAt = new Date(match.value.startTime).getTime();
+  return Number.isFinite(startedAt) && startedAt <= Date.now();
+});
+const isFull = computed(() => Boolean(match.value && match.value.openSlots <= 0));
 
 const ctaLabel = computed(() => {
   if (submitting.value) {
@@ -62,6 +71,14 @@ const ctaLabel = computed(() => {
 
   if (isMember.value) {
     return '去局内聊天';
+  }
+
+  if (isStarted.value) {
+    return '球局已开打';
+  }
+
+  if (isFull.value) {
+    return '席位已满';
   }
 
   if (isRejected.value) {
@@ -84,6 +101,14 @@ const ctaDescription = computed(() => {
     return '你已经加入这场球局，可以直接去局内聊天和大家确认到场安排。';
   }
 
+  if (isStarted.value) {
+    return '这场球局已经开打，去广场看看其他未开打的球友约球吧。';
+  }
+
+  if (isFull.value) {
+    return '这场球局席位已满，留意一下下一场或挑别的时段。';
+  }
+
   if (isRejected.value) {
     return myApplicationStatus.value.reason ?? '这场球局当前更适合其他安排，你可以换个时间段继续约。';
   }
@@ -96,7 +121,13 @@ const ctaDescription = computed(() => {
 });
 
 const isCtaDisabled = computed(
-  () => !match.value || myApplicationLoading.value || submitting.value || applied.value || isPendingApplication.value,
+  () =>
+    !match.value ||
+    myApplicationLoading.value ||
+    submitting.value ||
+    applied.value ||
+    isPendingApplication.value ||
+    (!isMember.value && (isStarted.value || isFull.value)),
 );
 
 function getMatchIdFromLocation() {
@@ -194,6 +225,10 @@ async function handleJoin() {
     uni.navigateTo({
       url: `/pages/chat/index?threadId=${encodeURIComponent(match.value.id)}`,
     });
+    return;
+  }
+
+  if (isStarted.value || isFull.value) {
     return;
   }
 
