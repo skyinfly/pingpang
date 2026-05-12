@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import type { SessionUser } from '../auth/dev-auth';
 
@@ -167,6 +167,10 @@ export class MessagesService {
 
   async createThreadMessage(threadId: string, sender: SessionUser, content: string) {
     const membership = await this.requireParticipant(threadId, sender.id);
+
+    if (membership.thread.status === 'cancelled') {
+      throw new ConflictException(`thread ${threadId} is cancelled`);
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
       const participants = await tx.chatThreadParticipant.findMany({

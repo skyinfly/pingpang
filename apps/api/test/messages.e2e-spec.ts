@@ -126,6 +126,20 @@ describe('Messages API', () => {
     );
   });
 
+  it('blocks posting to a cancelled chat thread', async () => {
+    const token = await login();
+    await prisma.chatThread.update({
+      where: { id: 'match-seed-1' },
+      data: { status: 'cancelled' },
+    });
+
+    await request(app.getHttpServer())
+      .post('/chat-threads/match-seed-1/messages')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content: 'Should be rejected.' })
+      .expect(409);
+  });
+
   it('persists a chat message and fans it out to thread participants', async () => {
     const token = await login();
     const createResponse = await request(app.getHttpServer())
