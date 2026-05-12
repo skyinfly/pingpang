@@ -15637,6 +15637,7 @@ export namespace Prisma {
 
   export type ReviewWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    matchId_reviewerId_revieweeId?: ReviewMatchIdReviewerIdRevieweeIdCompoundUniqueInput
     AND?: ReviewWhereInput | ReviewWhereInput[]
     OR?: ReviewWhereInput[]
     NOT?: ReviewWhereInput | ReviewWhereInput[]
@@ -15646,7 +15647,7 @@ export namespace Prisma {
     score?: IntFilter<"Review"> | number
     tags?: StringNullableListFilter<"Review">
     createdAt?: DateTimeFilter<"Review"> | Date | string
-  }, "id">
+  }, "id" | "matchId_reviewerId_revieweeId">
 
   export type ReviewOrderByWithAggregationInput = {
     id?: SortOrder
@@ -17482,6 +17483,12 @@ export namespace Prisma {
     hasEvery?: string[] | ListStringFieldRefInput<$PrismaModel>
     hasSome?: string[] | ListStringFieldRefInput<$PrismaModel>
     isEmpty?: boolean
+  }
+
+  export type ReviewMatchIdReviewerIdRevieweeIdCompoundUniqueInput = {
+    matchId: string
+    reviewerId: string
+    revieweeId: string
   }
 
   export type ReviewCountOrderByAggregateInput = {

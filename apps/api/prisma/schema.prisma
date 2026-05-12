@@ -135,6 +135,7 @@ model Review {
   tags        String[]
   createdAt   DateTime @default(now())
 
+  @@unique([matchId, reviewerId, revieweeId])
   @@index([matchId])
   @@index([revieweeId])
 }

@@ -1,33 +1,112 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../common/prisma/prisma.service';
+
+const CREDIT_MIN = 0;
+const CREDIT_MAX = 100;
 
 @Injectable()
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(payload: { matchId: string; reviewerId: string; revieweeId: string; score: number; tags: string[] }) {
-    return this.prisma.$transaction(async (tx) => {
-      const review = await tx.review.create({
-        data: payload,
-      });
+  async create(payload: {
+    matchId: string;
+    reviewerId: string;
+    revieweeId: string;
+    score: number;
+    tags: string[];
+  }) {
+    if (!Number.isInteger(payload.score) || payload.score < 1 || payload.score > 5) {
+      throw new BadRequestException('score must be an integer between 1 and 5');
+    }
 
-      const reviewee = await tx.user.update({
-        where: { id: payload.revieweeId },
-        data: {
-          creditScore: {
-            increment: payload.score >= 4 ? 1 : -2,
+    if (!Array.isArray(payload.tags)) {
+      throw new BadRequestException('tags must be an array of strings');
+    }
+
+    if (payload.reviewerId === payload.revieweeId) {
+      throw new BadRequestException('reviewer and reviewee must be different users');
+    }
+
+    if (!payload.revieweeId || !payload.matchId) {
+      throw new BadRequestException('matchId and revieweeId are required');
+    }
+
+    const [match, reviewee] = await Promise.all([
+      this.prisma.match.findUnique({ where: { id: payload.matchId } }),
+      this.prisma.user.findUnique({ where: { id: payload.revieweeId } }),
+    ]);
+
+    if (!match) {
+      throw new NotFoundException(`Match ${payload.matchId} not found`);
+    }
+
+    if (!reviewee) {
+      throw new NotFoundException(`User ${payload.revieweeId} not found`);
+    }
+
+    const reviewerParticipates =
+      match.hostUserId === payload.reviewerId ||
+      (await this.prisma.chatThreadParticipant.findUnique({
+        where: {
+          threadId_userId: {
+            threadId: payload.matchId,
+            userId: payload.reviewerId,
           },
         },
-      });
+      })) !== null;
 
-      return {
-        review,
-        reviewee: {
-          id: reviewee.id,
-          creditScore: reviewee.creditScore,
+    if (!reviewerParticipates) {
+      throw new ForbiddenException(`Reviewer ${payload.reviewerId} is not a participant of match ${payload.matchId}`);
+    }
+
+    const revieweeParticipates =
+      match.hostUserId === payload.revieweeId ||
+      (await this.prisma.chatThreadParticipant.findUnique({
+        where: {
+          threadId_userId: {
+            threadId: payload.matchId,
+            userId: payload.revieweeId,
+          },
         },
-      };
-    });
+      })) !== null;
+
+    if (!revieweeParticipates) {
+      throw new ForbiddenException(`Reviewee ${payload.revieweeId} is not a participant of match ${payload.matchId}`);
+    }
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const review = await tx.review.create({ data: payload });
+
+        const delta = payload.score >= 4 ? 1 : -2;
+        const nextScore = Math.max(CREDIT_MIN, Math.min(CREDIT_MAX, reviewee.creditScore + delta));
+        const updated = await tx.user.update({
+          where: { id: payload.revieweeId },
+          data: { creditScore: nextScore },
+        });
+
+        return {
+          review,
+          reviewee: {
+            id: updated.id,
+            creditScore: updated.creditScore,
+          },
+        };
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('You have already reviewed this user for this match');
+      }
+
+      throw error;
+    }
   }
 
   async getProfile(userId: string) {
