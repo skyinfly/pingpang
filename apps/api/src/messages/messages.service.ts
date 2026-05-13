@@ -146,6 +146,7 @@ export class MessagesService {
         nickname: participant.user.nickname,
         city: participant.user.city,
         level: participant.user.level,
+        creditScore: participant.user.creditScore,
         role: participant.role,
         joinedAt: participant.joinedAt.toISOString(),
         lastReadAt: participant.lastReadAt?.toISOString() ?? null,

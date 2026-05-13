@@ -12,6 +12,8 @@ export function useChatMessagesQuery(options: {
   return useQuery({
     queryKey: computed(() => ['chat-messages', resolvedUserId.value, resolvedThreadId.value]),
     enabled: computed(() => Boolean(resolvedUserId.value && resolvedThreadId.value)),
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await apiClient.listThreadMessages(resolvedThreadId.value);
       return response;

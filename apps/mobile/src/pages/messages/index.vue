@@ -30,7 +30,15 @@ const filteredMessages = computed(() => {
 
   return items.filter((item) => item.kind === activeFilter.value);
 });
-const threadItems = computed(() => messagesQuery.data.value?.threads ?? []);
+const threadItems = computed(() => {
+  const threads = messagesQuery.data.value?.threads ?? [];
+
+  if (activeFilter.value === 'all' || activeFilter.value === 'chat') {
+    return threads;
+  }
+
+  return [];
+});
 
 function openLogin() {
   uni.navigateTo({
@@ -141,7 +149,6 @@ function getMessageStatusLabel(status?: string | null) {
         </view>
 
         <view
-          v-if="activeFilter === 'chat'"
           v-for="item in threadItems"
           :key="item.id"
           class="notice-card notice-card--interactive"
@@ -154,7 +161,10 @@ function getMessageStatusLabel(status?: string | null) {
           <text class="notice-meta">{{ formatThreadMeta(item.status, item.unreadCount, item.participantCount) }}</text>
         </view>
 
-        <view v-if="activeFilter !== 'chat' && filteredMessages.length === 0" class="notice-card">
+        <view
+          v-if="activeFilter !== 'chat' && filteredMessages.length === 0 && threadItems.length === 0"
+          class="notice-card"
+        >
           <text class="notice-title">这里还没有新消息</text>
           <text class="notice-copy">有新的审核结果、邀请或提醒时，会第一时间出现在这里。</text>
         </view>

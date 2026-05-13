@@ -159,9 +159,20 @@ async function handleSend() {
         <text class="hero-helper">当前 {{ participants.length }} 位球友在线，开打前可以先同步到场时间。</text>
 
         <view class="participant-row">
-          <text v-for="participant in participants" :key="participant.userId" class="participant-chip">
-            {{ participant.nickname }}
-          </text>
+          <view
+            v-for="participant in participants"
+            :key="participant.userId"
+            class="participant-chip"
+            :class="{ 'participant-chip--host': participant.role === 'host' }"
+          >
+            <text class="participant-name">
+              {{ participant.nickname }}
+              <text v-if="participant.role === 'host'" class="participant-role">主理人</text>
+            </text>
+            <text class="participant-meta">
+              {{ participant.level }} · 信用 {{ participant.creditScore }}
+            </text>
+          </view>
         </view>
       </view>
 
@@ -285,12 +296,39 @@ async function handleSend() {
 }
 
 .participant-chip {
-  padding: 8rpx 18rpx;
-  border-radius: 999rpx;
-  background: rgba(15, 28, 46, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  padding: 10rpx 18rpx;
+  border-radius: 18rpx;
+  background: rgba(15, 28, 46, 0.06);
   color: $color-ink;
   font-size: 22rpx;
   font-weight: 700;
+}
+
+.participant-chip--host {
+  background: rgba(255, 106, 61, 0.14);
+}
+
+.participant-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+
+.participant-role {
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: $color-primary;
+  color: #fff;
+  font-size: 18rpx;
+}
+
+.participant-meta {
+  color: $color-muted;
+  font-size: 20rpx;
+  font-weight: 600;
 }
 
 .message-panel {

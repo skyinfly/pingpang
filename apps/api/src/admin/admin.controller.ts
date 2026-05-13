@@ -13,8 +13,11 @@ export class AdminController {
   }
 
   @Get('matches')
-  listMatches() {
-    return this.adminService.listMatches();
+  listMatches(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.adminService.listMatches({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Post('matches')
@@ -38,8 +41,11 @@ export class AdminController {
   }
 
   @Get('users')
-  listUsers() {
-    return this.adminService.listUsers();
+  listUsers(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.adminService.listUsers({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Post('users')
@@ -58,8 +64,11 @@ export class AdminController {
   }
 
   @Get('venues')
-  listVenues() {
-    return this.adminService.listVenues();
+  listVenues(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.adminService.listVenues({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Post('venues')
@@ -108,8 +117,15 @@ export class AdminController {
   }
 
   @Get('applications')
-  listApplications(@Query('status') status?: string) {
-    return this.adminService.listApplications(status);
+  listApplications(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.adminService.listApplications(status, {
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Get('reviews')
@@ -118,12 +134,16 @@ export class AdminController {
     @Query('reviewerId') reviewerId?: string,
     @Query('minScore') minScore?: string,
     @Query('maxScore') maxScore?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     return this.adminService.listReviews({
       revieweeId,
       reviewerId,
       minScore: minScore !== undefined ? Number(minScore) : undefined,
       maxScore: maxScore !== undefined ? Number(maxScore) : undefined,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
     });
   }
 

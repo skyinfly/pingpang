@@ -1,15 +1,20 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { requestLoginCode, verifyLoginCode } from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 
 const authStore = useAuthStore();
-const phone = ref('13800138000');
-const code = ref('123456');
-const hint = ref('开发环境固定验证码为 123456。');
+const phone = ref('');
+const code = ref('');
+const hint = ref('');
+const codeSent = ref(false);
+const requesting = ref(false);
 const loading = ref(false);
 const tabPaths = new Set(['/pages/home/index', '/pages/square/index', '/pages/messages/index', '/pages/profile/index']);
 const hasSession = computed(() => Boolean(authStore.token && authStore.user));
+
+const phoneValid = computed(() => /^1\d{10}$/.test(phone.value));
+const codeValid = computed(() => /^\d{6}$/.test(code.value));
 
 function getRedirectFromLocation() {
   if (typeof window === 'undefined') {
@@ -46,11 +51,42 @@ function continueAfterLogin() {
 }
 
 async function handleRequestCode() {
-  const response = await requestLoginCode(phone.value);
-  hint.value = `当前开发验证码：${response.devCode}`;
+  if (!phoneValid.value || requesting.value) {
+    hint.value = '请输入有效的 11 位手机号';
+    return;
+  }
+
+  requesting.value = true;
+
+  try {
+    const response = await requestLoginCode(phone.value);
+
+    if (response.devCode) {
+      hint.value = `验证码已发送（开发环境直接显示：${response.devCode}）`;
+      code.value = response.devCode;
+    } else {
+      hint.value = '验证码已发送到你的手机，5 分钟内有效。';
+    }
+
+    codeSent.value = true;
+  } catch {
+    hint.value = '验证码发送失败，请稍后再试或检查网络。';
+  } finally {
+    requesting.value = false;
+  }
 }
 
 async function handleLogin() {
+  if (!phoneValid.value) {
+    hint.value = '请输入有效的 11 位手机号';
+    return;
+  }
+
+  if (!codeValid.value) {
+    hint.value = '请输入 6 位验证码';
+    return;
+  }
+
   loading.value = true;
 
   try {
@@ -58,6 +94,8 @@ async function handleLogin() {
     authStore.setSession(session);
     hint.value = `欢迎回来，${session.user.nickname}`;
     continueAfterLogin();
+  } catch {
+    hint.value = '验证码不正确或已过期，请重新获取。';
   } finally {
     loading.value = false;
   }
@@ -72,9 +110,9 @@ function handleLogout() {
 <template>
   <view class="page">
     <view class="card">
-      <text class="eyebrow">开发环境登录</text>
-      <text class="title">验证码快捷登录</text>
-      <text class="subtitle">先获取验证码，再输入固定开发验证码进入应用。</text>
+      <text class="eyebrow">Pingpang</text>
+      <text class="title">手机号验证登录</text>
+      <text class="subtitle">输入手机号，获取验证码后进入约球。</text>
 
       <view v-if="hasSession" class="session-card">
         <text class="session-title">当前已登录</text>
@@ -82,13 +120,42 @@ function handleLogout() {
         <button class="secondary-button" data-testid="login-logout-action" @click="handleLogout">退出当前账号</button>
       </view>
 
-      <input v-model="phone" class="input" placeholder="请输入手机号" />
-      <input v-model="code" class="input" placeholder="请输入验证码 123456" />
+      <input
+        v-model="phone"
+        class="input"
+        type="number"
+        maxlength="11"
+        placeholder="请输入 11 位手机号"
+        data-testid="login-phone"
+      />
+      <input
+        v-model="code"
+        class="input"
+        type="number"
+        maxlength="6"
+        placeholder="6 位验证码"
+        data-testid="login-code"
+      />
 
-      <button class="ghost-button" @click="handleRequestCode">获取验证码</button>
-      <button class="primary-button" :loading="loading" @click="handleLogin">登录并继续</button>
+      <button
+        class="ghost-button"
+        data-testid="login-request-code"
+        :disabled="!phoneValid || requesting"
+        @click="handleRequestCode"
+      >
+        {{ requesting ? '发送中...' : codeSent ? '重新发送验证码' : '获取验证码' }}
+      </button>
+      <button
+        class="primary-button"
+        data-testid="login-submit"
+        :loading="loading"
+        :disabled="!phoneValid || !codeValid || loading"
+        @click="handleLogin"
+      >
+        {{ loading ? '登录中...' : '登录并继续' }}
+      </button>
 
-      <text class="hint">{{ hint }}</text>
+      <text v-if="hint" class="hint">{{ hint }}</text>
     </view>
   </view>
 </template>
@@ -180,9 +247,17 @@ function handleLogout() {
   color: $color-primary;
 }
 
+.ghost-button[disabled] {
+  opacity: 0.5;
+}
+
 .primary-button {
   margin-top: 20rpx;
   background: $color-primary;
+}
+
+.primary-button[disabled] {
+  opacity: 0.55;
 }
 
 .secondary-button {

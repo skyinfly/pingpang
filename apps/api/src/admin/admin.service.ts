@@ -103,6 +103,17 @@ function getShanghaiDateParts(now: Date) {
   };
 }
 
+function normalizePagination(input: { page?: number; pageSize?: number } = {}) {
+  const page = Math.max(1, Math.floor(input.page ?? 1));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(input.pageSize ?? 50)));
+  return {
+    page,
+    pageSize,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  };
+}
+
 function buildShanghaiSlotDate(slotStartMinutes: number, now = new Date()) {
   const { year, month, day } = getShanghaiDateParts(now);
   const hours = String(Math.floor(slotStartMinutes / 60)).padStart(2, '0');
@@ -123,7 +134,16 @@ export class AdminService {
     private readonly matchesService: MatchesService,
   ) {}
 
-  async listReviews(filters: { revieweeId?: string; reviewerId?: string; minScore?: number; maxScore?: number } = {}) {
+  async listReviews(
+    filters: {
+      revieweeId?: string;
+      reviewerId?: string;
+      minScore?: number;
+      maxScore?: number;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ) {
     const where: Prisma.ReviewWhereInput = {};
 
     if (filters.revieweeId) {
@@ -141,11 +161,20 @@ export class AdminService {
       };
     }
 
-    const reviews = await this.prisma.review.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 200,
+    const { take, skip, page, pageSize } = normalizePagination({
+      page: filters.page,
+      pageSize: filters.pageSize,
     });
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.review.count({ where }),
+    ]);
 
     const userIds = new Set<string>();
     for (const review of reviews) {
@@ -196,6 +225,9 @@ export class AdminService {
           createdAt: review.createdAt.toISOString(),
         };
       }),
+      page,
+      pageSize,
+      total,
     };
   }
 
@@ -257,8 +289,10 @@ export class AdminService {
     };
   }
 
-  async listMatches() {
-    const [matches, applications] = await Promise.all([
+  async listMatches(pagination: { page?: number; pageSize?: number } = {}) {
+    const { take, skip, page, pageSize } = normalizePagination(pagination);
+
+    const [matches, total] = await Promise.all([
       this.prisma.match.findMany({
         include: {
           hostUser: {
@@ -271,23 +305,33 @@ export class AdminService {
         orderBy: {
           startTime: 'desc',
         },
+        take,
+        skip,
       }),
-      this.prisma.matchApplication.findMany({
-        select: {
-          matchId: true,
-          status: true,
-        },
-      }),
+      this.prisma.match.count(),
     ]);
+
+    const matchIds = matches.map((match) => match.id);
+    const applications = matchIds.length
+      ? await this.prisma.matchApplication.findMany({
+          where: { matchId: { in: matchIds } },
+          select: { matchId: true, status: true },
+        })
+      : [];
     const countsByMatch = toApplicationCounts(applications);
 
     return {
       items: matches.map((match) => this.mapMatch(match, countsByMatch.get(match.id))),
+      page,
+      pageSize,
+      total,
     };
   }
 
-  async listUsers() {
-    const [users, joinedCounts] = await Promise.all([
+  async listUsers(pagination: { page?: number; pageSize?: number } = {}) {
+    const { take, skip, page, pageSize } = normalizePagination(pagination);
+
+    const [users, joinedCounts, total] = await Promise.all([
       this.prisma.user.findMany({
         include: {
           _count: {
@@ -299,6 +343,8 @@ export class AdminService {
         orderBy: {
           createdAt: 'desc',
         },
+        take,
+        skip,
       }),
       this.prisma.chatThreadParticipant.groupBy({
         by: ['userId'],
@@ -309,22 +355,36 @@ export class AdminService {
           _all: true,
         },
       }),
+      this.prisma.user.count(),
     ]);
     const joinedCountMap = new Map(joinedCounts.map((item) => [item.userId, item._count._all]));
 
     return {
       items: users.map((user) => this.mapUser(user, joinedCountMap.get(user.id) ?? 0)),
+      page,
+      pageSize,
+      total,
     };
   }
 
-  async listVenues() {
-    const venues = await this.prisma.venue.findMany({
-      include: this.venueDetailInclude(),
-      orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }],
-    });
+  async listVenues(pagination: { page?: number; pageSize?: number } = {}) {
+    const { take, skip, page, pageSize } = normalizePagination(pagination);
+
+    const [venues, total] = await Promise.all([
+      this.prisma.venue.findMany({
+        include: this.venueDetailInclude(),
+        orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }],
+        take,
+        skip,
+      }),
+      this.prisma.venue.count(),
+    ]);
 
     return {
       items: venues.map((venue) => this.mapVenue(venue)),
+      page,
+      pageSize,
+      total,
     };
   }
 
@@ -608,36 +668,42 @@ export class AdminService {
     return { ok: true, id };
   }
 
-  async listApplications(status?: string) {
+  async listApplications(status?: string, pagination: { page?: number; pageSize?: number } = {}) {
     const normalizedStatus = status?.trim();
     const where =
       normalizedStatus && ['pending', 'approved', 'rejected'].includes(normalizedStatus)
         ? { status: normalizedStatus }
         : undefined;
+    const { take, skip, page, pageSize } = normalizePagination(pagination);
 
-    const applications = await this.prisma.matchApplication.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        match: {
-          select: {
-            id: true,
-            title: true,
-            venueName: true,
-            startTime: true,
-            openSlots: true,
-            maxPlayers: true,
-            hostUserId: true,
-            hostUser: {
-              select: {
-                nickname: true,
-                phone: true,
+    const [applications, total] = await Promise.all([
+      this.prisma.matchApplication.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+        skip,
+        include: {
+          match: {
+            select: {
+              id: true,
+              title: true,
+              venueName: true,
+              startTime: true,
+              openSlots: true,
+              maxPlayers: true,
+              hostUserId: true,
+              hostUser: {
+                select: {
+                  nickname: true,
+                  phone: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      this.prisma.matchApplication.count({ where }),
+    ]);
 
     const applicantIds = [...new Set(applications.map((item) => item.userId))];
     const applicants = applicantIds.length
@@ -678,6 +744,9 @@ export class AdminService {
         applicantLevel: applicantMap.get(item.userId)?.level ?? '',
         applicantCreditScore: applicantMap.get(item.userId)?.creditScore ?? 0,
       })),
+      page,
+      pageSize,
+      total,
     };
   }
 

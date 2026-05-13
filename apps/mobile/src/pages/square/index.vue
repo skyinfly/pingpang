@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useMatchesQuery } from '../../composables/useMatchesQuery';
 import { formatLevel } from '../../utils/copy';
 
-type TimeFilter = 'all' | 'today' | 'tomorrow';
+type TimeFilter = 'all' | 'today' | 'tomorrow' | 'weekend' | 'next7days';
 
 const cityOptions = ['上海'];
 const levelOptions = ['beginner', 'intermediate', 'advanced'];
@@ -11,6 +11,8 @@ const timeOptions: Array<{ value: TimeFilter; label: string }> = [
   { value: 'all', label: '全部时间' },
   { value: 'today', label: '今晚' },
   { value: 'tomorrow', label: '明天' },
+  { value: 'weekend', label: '周末' },
+  { value: 'next7days', label: '7 天内' },
 ];
 
 const selectedCity = ref('上海');
@@ -73,6 +75,24 @@ function formatMatchTime(value: string) {
 }
 
 const matchesQuery = useMatchesQuery(filters);
+
+function getShanghaiDayDiff(date: Date) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const today = new Date(`${formatter.format(new Date())}T00:00:00+08:00`);
+  const target = new Date(`${formatter.format(date)}T00:00:00+08:00`);
+  return Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+function getShanghaiWeekday(date: Date) {
+  const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', weekday: 'short' });
+  return formatter.format(date);
+}
+
 const visibleMatches = computed(() => {
   const items = matchesQuery.data.value?.items ?? [];
 
@@ -81,8 +101,27 @@ const visibleMatches = computed(() => {
   }
 
   return items.filter((item) => {
-    const dayLabel = getRelativeDayLabel(new Date(item.startTime));
-    return selectedTime.value === 'today' ? dayLabel === '今晚' : dayLabel === '明天';
+    const date = new Date(item.startTime);
+    const diff = getShanghaiDayDiff(date);
+
+    if (selectedTime.value === 'today') {
+      return diff === 0;
+    }
+
+    if (selectedTime.value === 'tomorrow') {
+      return diff === 1;
+    }
+
+    if (selectedTime.value === 'weekend') {
+      const weekday = getShanghaiWeekday(date);
+      return (weekday === 'Sat' || weekday === 'Sun') && diff >= 0 && diff <= 13;
+    }
+
+    if (selectedTime.value === 'next7days') {
+      return diff >= 0 && diff <= 7;
+    }
+
+    return true;
   });
 });
 

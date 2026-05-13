@@ -68,7 +68,9 @@ describe('LoginPage', () => {
       },
     });
 
-    await wrapper.get('.primary-button').trigger('click');
+    await wrapper.get('[data-testid="login-phone"]').setValue('13800138000');
+    await wrapper.get('[data-testid="login-code"]').setValue('123456');
+    await wrapper.get('[data-testid="login-submit"]').trigger('click');
 
     await vi.waitFor(() => {
       expect(window.location.hash).toBe('#/pages/match-detail/index?id=match-seed-1');

@@ -22,6 +22,7 @@ function formatMatchTime(value?: string) {
 
 const matchesQuery = useMatchesQuery({ city: '上海', level: 'intermediate' });
 const featuredMatch = computed(() => matchesQuery.data.value?.items[0] ?? null);
+const recommendedMatches = computed(() => (matchesQuery.data.value?.items ?? []).slice(0, 5));
 const heroEyebrow = computed(() => (featuredMatch.value ? '今晚推荐' : '今晚好局'));
 const heroTitle = computed(() => featuredMatch.value?.title ?? '今晚 20:00 前快速成局');
 const heroSubtitle = computed(() => {
@@ -77,15 +78,23 @@ function openMatchDetail(id: string) {
         <text class="card-meta">附近中级场次正在按匹配度排序...</text>
       </view>
 
-      <view v-else-if="featuredMatch" class="card" @click="openMatchDetail(featuredMatch.id)">
-        <text class="card-title">{{ featuredMatch.title }}</text>
-        <text class="card-meta">
-          {{ featuredMatch.distanceKm }}km · 还差 {{ featuredMatch.openSlots }} 人 · 匹配度 {{ featuredMatch.matchRate }}%
-        </text>
-        <text class="card-caption">
-          {{ featuredMatch.venueName }} · {{ formatMatchTime(featuredMatch.startTime) }} · 主理人信用 {{ featuredMatch.hostCreditScore }}
-        </text>
-      </view>
+      <template v-else-if="recommendedMatches.length">
+        <view
+          v-for="item in recommendedMatches"
+          :key="item.id"
+          class="card"
+          data-testid="home-match-card"
+          @click="openMatchDetail(item.id)"
+        >
+          <text class="card-title">{{ item.title }}</text>
+          <text class="card-meta">
+            {{ item.distanceKm }}km · 还差 {{ item.openSlots }} 人 · 匹配度 {{ item.matchRate }}%
+          </text>
+          <text class="card-caption">
+            {{ item.venueName }} · {{ formatMatchTime(item.startTime) }} · 主理人信用 {{ item.hostCreditScore }}
+          </text>
+        </view>
+      </template>
 
       <view v-else class="card">
         <text class="card-title">今晚暂时没有合适球局</text>

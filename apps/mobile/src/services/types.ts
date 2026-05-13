@@ -156,6 +156,7 @@ export type ChatThreadParticipant = {
   nickname: string;
   city: string;
   level: string;
+  creditScore: number;
   role: string;
   joinedAt: string;
   lastReadAt: string | null;

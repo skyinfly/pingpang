@@ -42,7 +42,7 @@ function buildQuery(params: Record<string, string | undefined>) {
 }
 
 export function requestLoginCode(phone: string) {
-  return http<{ ok: boolean; phone: string; devCode: string }>('/auth/request-code', {
+  return http<{ ok: boolean; phone: string; devCode?: string }>('/auth/request-code', {
     method: 'POST',
     data: { phone },
   });

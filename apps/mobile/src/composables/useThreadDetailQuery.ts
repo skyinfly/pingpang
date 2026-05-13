@@ -12,6 +12,8 @@ export function useThreadDetailQuery(options: {
   return useQuery({
     queryKey: computed(() => ['chat-thread-detail', resolvedUserId.value, resolvedThreadId.value]),
     enabled: computed(() => Boolean(resolvedUserId.value && resolvedThreadId.value)),
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => apiClient.fetchChatThreadDetail(resolvedThreadId.value),
   });
 }
