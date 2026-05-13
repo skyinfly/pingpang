@@ -1,11 +1,12 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import type { SessionUser } from '../../auth/dev-auth';
 import { getAppConfig } from '../env/app-config';
 
-type SessionTokenPayload = {
+export type SessionTokenPayload = {
   sub: string;
   phone: string;
+  jti: string;
   iat: number;
   exp: number;
 };
@@ -28,6 +29,7 @@ export function issueSessionToken(user: SessionUser) {
   const payload: SessionTokenPayload = {
     sub: user.id,
     phone: user.phone,
+    jti: randomBytes(12).toString('base64url'),
     iat: now,
     exp: now + config.authTokenTtlSeconds,
   };

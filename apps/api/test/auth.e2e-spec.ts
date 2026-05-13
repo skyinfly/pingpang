@@ -33,6 +33,31 @@ describe('Auth flow', () => {
     await prisma.user.deleteMany();
   });
 
+  it('revokes the current session and blocks subsequent token use', async () => {
+    const phone = '13800138000';
+    await request(app.getHttpServer()).post('/auth/request-code').send({ phone }).expect(201);
+    const verifyResponse = await request(app.getHttpServer())
+      .post('/auth/verify-code')
+      .send({ phone, code: '123456' })
+      .expect(201);
+    const token = verifyResponse.body.token as string;
+
+    await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/users/logout')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: true });
+
+    await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
   afterAll(async () => {
     process.env.NODE_ENV = originalNodeEnv;
     delete process.env.AUTH_TOKEN_SECRET;
