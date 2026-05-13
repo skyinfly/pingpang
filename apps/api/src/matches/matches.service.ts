@@ -50,6 +50,7 @@ export class MatchesService {
         city: filters?.city || undefined,
         level: filters?.level || undefined,
         status: 'open',
+        openSlots: { gt: 0 },
         startTime: { gt: new Date() },
       },
       orderBy: { startTime: 'asc' },

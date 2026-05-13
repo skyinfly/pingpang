@@ -3,6 +3,7 @@ import { ReviewsService } from './reviews.service';
 import { DevBearerGuard } from '../common/auth/dev-bearer.guard';
 import { AuthUser } from '../common/auth/auth-user.decorator';
 import type { SessionUser } from '../auth/dev-auth';
+import { SubmitReviewDto } from './dto/submit-review.dto';
 
 @Controller('reviews')
 export class ReviewsController {
@@ -10,10 +11,7 @@ export class ReviewsController {
 
   @Post()
   @UseGuards(DevBearerGuard)
-  create(
-    @AuthUser() user: SessionUser,
-    @Body() body: { matchId: string; revieweeId: string; score: number; tags: string[] },
-  ) {
+  create(@AuthUser() user: SessionUser, @Body() body: SubmitReviewDto) {
     return this.reviewsService.create({
       matchId: body.matchId,
       reviewerId: user.id,

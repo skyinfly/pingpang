@@ -69,9 +69,18 @@ export class MessagesService {
     };
   }
 
-  async listThreads(userId: string) {
+  async listThreads(userId: string, filters: { status?: string } = {}) {
+    const normalizedStatus = filters.status?.trim();
+    const threadStatusFilter =
+      normalizedStatus && ['active', 'cancelled'].includes(normalizedStatus)
+        ? { status: normalizedStatus }
+        : undefined;
+
     const memberships = await this.prisma.chatThreadParticipant.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(threadStatusFilter ? { thread: threadStatusFilter } : {}),
+      },
       include: {
         thread: true,
       },
