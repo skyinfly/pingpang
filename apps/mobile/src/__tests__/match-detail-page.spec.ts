@@ -916,6 +916,134 @@ describe('MatchDetailPage', () => {
     expect((cta.element as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('lets the host rate an approved member after the match has started', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+    const requests: Array<{ url: string; method: string; data?: unknown }> = [];
+
+    window.location.hash = '#/pages/match-detail/index?id=match-host-review-1';
+
+    const matchPayload = {
+      id: 'match-host-review-1',
+      title: '上周末主理人评价测试',
+      venueName: '徐家汇活力馆 3 号台',
+      startTime: '2000-01-01T11:30:00.000Z',
+      distanceKm: 1.8,
+      maxPlayers: 4,
+      openSlots: 2,
+      status: 'open',
+      hostCreditScore: 97,
+      level: 'intermediate',
+      matchRate: 93,
+      city: '上海',
+      score: 66,
+      hostUserId: 'user-13800138000',
+    };
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        method,
+        data,
+        success,
+      }: {
+        url: string;
+        method?: string;
+        data?: unknown;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        requests.push({ url, method: method ?? 'GET', data });
+
+        if (url.endsWith('/matches/match-host-review-1/applications') && (method ?? 'GET') === 'GET') {
+          success({
+            statusCode: 200,
+            data: {
+              items: [
+                {
+                  id: 'application-host-review-1',
+                  matchId: 'match-host-review-1',
+                  userId: 'user-reviewee-9',
+                  status: 'approved',
+                  applicantNickname: '球友小新',
+                  applicantCity: '上海',
+                  applicantLevel: 'intermediate',
+                  applicantCreditScore: 95,
+                  createdAt: '2025-12-01T00:00:00.000Z',
+                },
+              ],
+            },
+          });
+          return;
+        }
+
+        if (url.endsWith('/reviews') && method === 'POST') {
+          success({
+            statusCode: 201,
+            data: {
+              review: {
+                id: 'review-host-1',
+                matchId: 'match-host-review-1',
+                reviewerId: 'user-13800138000',
+                revieweeId: 'user-reviewee-9',
+                score: 5,
+                tags: ['fair_play'],
+                createdAt: '2025-12-01T00:00:00.000Z',
+              },
+              reviewee: { id: 'user-reviewee-9', creditScore: 96 },
+            },
+          });
+          return;
+        }
+
+        success({ statusCode: 200, data: matchPayload });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(MatchDetailPage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="approved-member-card-user-reviewee-9"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="member-review-stars-user-reviewee-9"]').exists()).toBe(true);
+    });
+
+    await wrapper.get('[data-testid="member-review-tag-user-reviewee-9-fair_play"]').trigger('click');
+    await wrapper.get('[data-testid="submit-member-review-user-reviewee-9"]').trigger('click');
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('球友信用分已经更新');
+    });
+
+    const reviewCall = requests.find((r) => r.url.endsWith('/reviews') && r.method === 'POST');
+    expect(reviewCall?.data).toEqual({
+      matchId: 'match-host-review-1',
+      revieweeId: 'user-reviewee-9',
+      score: 5,
+      tags: ['fair_play'],
+    });
+  });
+
   it('lets a member submit a review after the match has started', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

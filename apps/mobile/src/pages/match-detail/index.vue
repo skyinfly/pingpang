@@ -38,6 +38,12 @@ const selectedReviewTags = ref<string[]>([]);
 const hasReviewed = ref(false);
 const reviewCheckedForMatchId = ref('');
 
+const memberReviewScores = ref<Record<string, number>>({});
+const memberReviewTags = ref<Record<string, string[]>>({});
+const memberReviewSubmitting = ref<Record<string, boolean>>({});
+const memberReviewDone = ref<Record<string, boolean>>({});
+const memberReviewError = ref<Record<string, string>>({});
+
 const reviewTagOptions = [
   { value: 'on_time', label: '准时到场' },
   { value: 'great_communication', label: '沟通顺畅' },
@@ -90,6 +96,10 @@ const canReviewHost = computed(() => {
     return false;
   }
   return true;
+});
+
+const canHostReviewMembers = computed(() => {
+  return Boolean(match.value && isHost.value && isStarted.value && !isCancelled.value);
 });
 
 const ctaLabel = computed(() => {
@@ -400,6 +410,60 @@ async function checkExistingReview() {
   }
 }
 
+function getMemberScore(userId: string) {
+  return memberReviewScores.value[userId] ?? 5;
+}
+
+function getMemberTags(userId: string) {
+  return memberReviewTags.value[userId] ?? [];
+}
+
+function setMemberReviewScore(userId: string, score: number) {
+  memberReviewScores.value = { ...memberReviewScores.value, [userId]: score };
+}
+
+function toggleMemberReviewTag(userId: string, tag: string) {
+  const current = memberReviewTags.value[userId] ?? [];
+  const index = current.indexOf(tag);
+  const next = index >= 0 ? current.filter((_, i) => i !== index) : [...current, tag];
+  memberReviewTags.value = { ...memberReviewTags.value, [userId]: next };
+}
+
+async function submitMemberReview(userId: string) {
+  if (!match.value || memberReviewSubmitting.value[userId]) {
+    return;
+  }
+
+  memberReviewSubmitting.value = { ...memberReviewSubmitting.value, [userId]: true };
+  memberReviewError.value = { ...memberReviewError.value, [userId]: '' };
+
+  try {
+    await submitReview({
+      matchId: match.value.id,
+      revieweeId: userId,
+      score: getMemberScore(userId),
+      tags: [...getMemberTags(userId)],
+    });
+    memberReviewDone.value = { ...memberReviewDone.value, [userId]: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('409')) {
+      memberReviewDone.value = { ...memberReviewDone.value, [userId]: true };
+      memberReviewError.value = {
+        ...memberReviewError.value,
+        [userId]: '你已经评价过这位球友，不需要重复评分。',
+      };
+    } else {
+      memberReviewError.value = {
+        ...memberReviewError.value,
+        [userId]: '评价提交失败，请稍后再试。',
+      };
+    }
+  } finally {
+    memberReviewSubmitting.value = { ...memberReviewSubmitting.value, [userId]: false };
+  }
+}
+
 async function handleSubmitReview() {
   if (!match.value || !match.value.hostUserId || reviewSubmitting.value) {
     return;
@@ -636,12 +700,63 @@ if (initialMatchId) {
           <text class="application-meta">你同意申请后，成员会出现在这里。</text>
         </view>
 
-        <view v-for="item in approvedApplications" :key="item.id" class="application-card">
+        <view
+          v-for="item in approvedApplications"
+          :key="item.id"
+          class="application-card"
+          :data-testid="`approved-member-card-${item.userId}`"
+        >
           <text class="application-name">{{ item.applicantNickname }}</text>
           <text class="application-meta">
             {{ item.applicantCity }} · {{ formatLevel(item.applicantLevel) }} · 信用 {{ item.applicantCreditScore }}
           </text>
           <text class="application-status">已同意加入</text>
+
+          <view v-if="canHostReviewMembers" class="member-review">
+            <view v-if="memberReviewDone[item.userId]" class="review-confirm review-confirm--inline">
+              <text class="review-confirm-title">已完成评价</text>
+              <text class="review-confirm-copy">球友信用分已经更新。</text>
+            </view>
+            <view v-else>
+              <text class="member-review-label">评价这位球友</text>
+              <view class="review-stars" :data-testid="`member-review-stars-${item.userId}`">
+                <button
+                  v-for="value in 5"
+                  :key="value"
+                  type="button"
+                  class="review-star review-star--small"
+                  :class="{ 'review-star--active': value <= getMemberScore(item.userId) }"
+                  :data-testid="`member-review-star-${item.userId}-${value}`"
+                  @click="setMemberReviewScore(item.userId, value)"
+                >
+                  {{ value <= getMemberScore(item.userId) ? '★' : '☆' }}
+                </button>
+              </view>
+              <view class="review-tags">
+                <button
+                  v-for="tag in reviewTagOptions"
+                  :key="tag.value"
+                  type="button"
+                  class="review-tag"
+                  :class="{ 'review-tag--active': getMemberTags(item.userId).includes(tag.value) }"
+                  :data-testid="`member-review-tag-${item.userId}-${tag.value}`"
+                  @click="toggleMemberReviewTag(item.userId, tag.value)"
+                >
+                  {{ tag.label }}
+                </button>
+              </view>
+              <text v-if="memberReviewError[item.userId]" class="error-copy">{{ memberReviewError[item.userId] }}</text>
+              <button
+                type="button"
+                class="application-button application-button--primary"
+                :data-testid="`submit-member-review-${item.userId}`"
+                :disabled="memberReviewSubmitting[item.userId]"
+                @click="submitMemberReview(item.userId)"
+              >
+                {{ memberReviewSubmitting[item.userId] ? '提交中...' : '提交评价' }}
+              </button>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -1088,5 +1203,30 @@ if (initialMatchId) {
   margin-top: 8rpx;
   color: $color-muted;
   font-size: 22rpx;
+}
+
+.review-star--small {
+  width: 48rpx;
+  height: 48rpx;
+  font-size: 26rpx;
+  line-height: 48rpx;
+}
+
+.member-review {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed rgba(15, 28, 46, 0.12);
+}
+
+.member-review-label {
+  display: block;
+  color: $color-ink;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.review-confirm--inline {
+  padding: 16rpx;
+  border-radius: 20rpx;
 }
 </style>
