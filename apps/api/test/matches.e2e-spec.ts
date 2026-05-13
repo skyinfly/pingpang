@@ -185,11 +185,16 @@ describe('Matches listing', () => {
 
     await seedDatabaseInTransaction(tx as any);
 
-    expect(matchUpserts).toHaveLength(2);
+    expect(matchUpserts).toHaveLength(3);
     expect(matchUpserts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           where: { id: 'match-seed-1' },
+          create: expect.objectContaining({ venueId: 'venue-seed-1' }),
+          update: expect.objectContaining({ venueId: 'venue-seed-1' }),
+        }),
+        expect.objectContaining({
+          where: { id: 'match-seed-past-1' },
           create: expect.objectContaining({ venueId: 'venue-seed-1' }),
           update: expect.objectContaining({ venueId: 'venue-seed-1' }),
         }),

@@ -916,6 +916,173 @@ describe('MatchDetailPage', () => {
     expect((cta.element as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('lets a member submit a review after the match has started', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const authStore = useAuthStore();
+    const requests: Array<{ url: string; method: string; data?: unknown }> = [];
+
+    window.location.hash = '#/pages/match-detail/index?id=match-past-host-1';
+
+    vi.stubGlobal('uni', {
+      request: ({
+        url,
+        method,
+        data,
+        success,
+      }: {
+        url: string;
+        method?: string;
+        data?: unknown;
+        success: (response: { statusCode: number; data: unknown }) => void;
+      }) => {
+        requests.push({ url, method: method ?? 'GET', data });
+
+        if (url.endsWith('/matches/joined')) {
+          success({
+            statusCode: 200,
+            data: {
+              items: [
+                {
+                  id: 'match-past-host-1',
+                  title: '上周五的徐汇晚场',
+                  venueName: '徐家汇活力馆 3 号台',
+                  startTime: '2000-04-17T11:30:00.000Z',
+                  distanceKm: 1.8,
+                  maxPlayers: 4,
+                  openSlots: 2,
+                  status: 'open',
+                  hostCreditScore: 97,
+                  level: 'intermediate',
+                  matchRate: 93,
+                  city: '上海',
+                  score: 66,
+                  hostUserId: 'user-reviewee-1',
+                },
+              ],
+            },
+          });
+          return;
+        }
+
+        if (url.endsWith('/matches/match-past-host-1/my-application')) {
+          success({
+            statusCode: 200,
+            data: {
+              status: 'approved',
+              applicationId: 'application-past-1',
+              matchId: 'match-past-host-1',
+              userId: 'user-13800138000',
+            },
+          });
+          return;
+        }
+
+        if (url.endsWith('/reviews/profile/user-reviewee-1')) {
+          success({
+            statusCode: 200,
+            data: {
+              user: {
+                id: 'user-reviewee-1',
+                nickname: '球友里卡',
+                city: '上海',
+                level: 'intermediate',
+                creditScore: 97,
+              },
+              stats: { totalReviews: 0, positiveReviews: 0, averageScore: 0 },
+              tags: [],
+              items: [],
+            },
+          });
+          return;
+        }
+
+        if (url.endsWith('/reviews') && method === 'POST') {
+          success({
+            statusCode: 201,
+            data: {
+              review: {
+                id: 'review-new-1',
+                matchId: 'match-past-host-1',
+                reviewerId: 'user-13800138000',
+                revieweeId: 'user-reviewee-1',
+                score: 4,
+                tags: ['on_time'],
+                createdAt: '2025-12-01T00:00:00.000Z',
+              },
+              reviewee: { id: 'user-reviewee-1', creditScore: 98 },
+            },
+          });
+          return;
+        }
+
+        success({
+          statusCode: 200,
+          data: {
+            id: 'match-past-host-1',
+            title: '上周五的徐汇晚场',
+            venueName: '徐家汇活力馆 3 号台',
+            startTime: '2000-04-17T11:30:00.000Z',
+            distanceKm: 1.8,
+            maxPlayers: 4,
+            openSlots: 2,
+            status: 'open',
+            hostCreditScore: 97,
+            level: 'intermediate',
+            matchRate: 93,
+            city: '上海',
+            score: 66,
+            hostUserId: 'user-reviewee-1',
+          },
+        });
+      },
+      navigateTo: vi.fn(),
+      switchTab: vi.fn(),
+      setStorageSync: vi.fn(),
+      getStorageSync: vi.fn(() => ''),
+      removeStorageSync: vi.fn(),
+    });
+
+    authStore.setSession({
+      token: 'dev-token-13800138000',
+      user: {
+        id: 'user-13800138000',
+        phone: '13800138000',
+        nickname: '球友1380013',
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+
+    const wrapper = mount(MatchDetailPage, {
+      global: {
+        plugins: [pinia, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="review-panel"]').exists()).toBe(true);
+    });
+
+    await wrapper.get('[data-testid="review-star-4"]').trigger('click');
+    await wrapper.get('[data-testid="review-tag-on_time"]').trigger('click');
+    await wrapper.get('[data-testid="submit-review"]').trigger('click');
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="review-confirm"]').exists()).toBe(true);
+    });
+
+    const reviewCall = requests.find((r) => r.url.endsWith('/reviews') && r.method === 'POST');
+    expect(reviewCall).toBeDefined();
+    expect(reviewCall?.data).toEqual({
+      matchId: 'match-past-host-1',
+      revieweeId: 'user-reviewee-1',
+      score: 4,
+      tags: ['on_time'],
+    });
+  });
+
   it('lets the host cancel their own match and flips the CTA to a cancelled state', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

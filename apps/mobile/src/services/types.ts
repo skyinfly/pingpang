@@ -207,3 +207,26 @@ export type ReviewProfile = {
   }>;
   items: ReviewSummary[];
 };
+
+export type SubmitReviewPayload = {
+  matchId: string;
+  revieweeId: string;
+  score: number;
+  tags: string[];
+};
+
+export type SubmitReviewResponse = {
+  review: {
+    id: string;
+    matchId: string;
+    reviewerId: string;
+    revieweeId: string;
+    score: number;
+    tags: string[];
+    createdAt: string;
+  };
+  reviewee: {
+    id: string;
+    creditScore: number;
+  };
+};

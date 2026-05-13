@@ -87,13 +87,22 @@ describe('Messages API', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(response.body.items).toHaveLength(1);
-    expect(response.body.items[0]).toMatchObject({
-      id: 'match-seed-1',
-      matchId: 'match-seed-1',
-      participantCount: 2,
-      unreadCount: 3,
-    });
+    expect(response.body.items).toHaveLength(2);
+    expect(response.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'match-seed-1',
+          matchId: 'match-seed-1',
+          participantCount: 2,
+          unreadCount: 3,
+        }),
+        expect.objectContaining({
+          id: 'match-seed-past-1',
+          matchId: 'match-seed-past-1',
+          participantCount: 2,
+        }),
+      ]),
+    );
   });
 
   it('returns conversation metadata and participants for one thread', async () => {

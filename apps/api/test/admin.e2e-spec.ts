@@ -54,7 +54,7 @@ describe('Admin API', () => {
 
     expect(response.body).toEqual({
       users: 2,
-      matches: 2,
+      matches: 3,
       pendingApplications: 0,
       activeVenues: 2,
       unreadMessages: 6,
@@ -104,12 +104,12 @@ describe('Admin API', () => {
           city: '上海',
           level: 'intermediate',
           creditScore: 100,
-          hostedMatches: 2,
+          hostedMatches: 3,
           joinedMatches: 0,
         }),
         expect.objectContaining({
           id: 'user-13800138000',
-          joinedMatches: 1,
+          joinedMatches: 2,
         }),
       ]),
     );
@@ -131,7 +131,7 @@ describe('Admin API', () => {
           isActive: true,
           courtCount: 2,
           slotCount: 2,
-          matchCount: 1,
+          matchCount: 2,
           courts: expect.arrayContaining([
             expect.objectContaining({ id: 'venue-court-1', name: '3号台', isActive: true }),
             expect.objectContaining({ id: 'venue-court-2', name: '5号台', isActive: true }),

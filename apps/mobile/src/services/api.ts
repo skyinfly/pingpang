@@ -13,6 +13,8 @@ import type {
   MessagePreview,
   MessageSummary,
   ReviewProfile,
+  SubmitReviewPayload,
+  SubmitReviewResponse,
   SessionPayload,
   SessionUser,
   ThreadMessagesResponse,
@@ -187,6 +189,14 @@ export function fetchReviewProfile(userId: string) {
   return http<ReviewProfile>(`/reviews/profile/${encodeURIComponent(userId)}`);
 }
 
+export function submitReview(payload: SubmitReviewPayload) {
+  return http<SubmitReviewResponse>('/reviews', {
+    method: 'POST',
+    data: payload,
+    headers: withAuthHeaders(),
+  });
+}
+
 export const apiClient = {
   requestLoginCode,
   verifyLoginCode,
@@ -211,4 +221,5 @@ export const apiClient = {
   createThreadMessage,
   markChatThreadRead,
   fetchReviewProfile,
+  submitReview,
 };

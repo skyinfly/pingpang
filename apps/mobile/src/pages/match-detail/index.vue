@@ -6,8 +6,10 @@ import {
   cancelHostedMatch,
   fetchMatchById,
   fetchMyMatchApplicationStatus,
+  fetchReviewProfile,
   listHostedApplications,
   rejectHostedApplication,
+  submitReview,
 } from '../../services/api';
 import type { HostedMatchApplication, MatchCard, MyMatchApplicationStatus } from '../../services/types';
 import { useAuthStore } from '../../stores/auth';
@@ -29,6 +31,19 @@ const applicationsLoading = ref(false);
 const hostActionError = ref('');
 const cancelling = ref(false);
 const cancelError = ref('');
+const reviewSubmitting = ref(false);
+const reviewError = ref('');
+const reviewScore = ref(5);
+const selectedReviewTags = ref<string[]>([]);
+const hasReviewed = ref(false);
+const reviewCheckedForMatchId = ref('');
+
+const reviewTagOptions = [
+  { value: 'on_time', label: '准时到场' },
+  { value: 'great_communication', label: '沟通顺畅' },
+  { value: 'positive_energy', label: '球场氛围好' },
+  { value: 'fair_play', label: '比赛公平' },
+];
 const myApplicationStatus = ref<MyMatchApplicationStatus>({ status: 'none' });
 const myApplicationLoading = ref(false);
 const activeRejectApplicationId = ref('');
@@ -67,6 +82,15 @@ const isStarted = computed(() => {
 });
 const isFull = computed(() => Boolean(match.value && match.value.openSlots <= 0));
 const isCancelled = computed(() => match.value?.status === 'cancelled');
+const canReviewHost = computed(() => {
+  if (!match.value || !authStore.user?.id || isHost.value) {
+    return false;
+  }
+  if (!isMember.value || !isStarted.value || isCancelled.value) {
+    return false;
+  }
+  return true;
+});
 
 const ctaLabel = computed(() => {
   if (submitting.value) {
@@ -339,6 +363,72 @@ async function handleReject(applicationId: string) {
   }
 }
 
+function toggleReviewTag(tag: string) {
+  const index = selectedReviewTags.value.indexOf(tag);
+  if (index >= 0) {
+    selectedReviewTags.value.splice(index, 1);
+  } else {
+    selectedReviewTags.value.push(tag);
+  }
+}
+
+function setReviewScore(score: number) {
+  reviewScore.value = score;
+}
+
+async function checkExistingReview() {
+  if (!match.value || !authStore.user?.id || !canReviewHost.value) {
+    return;
+  }
+  if (reviewCheckedForMatchId.value === match.value.id) {
+    return;
+  }
+
+  try {
+    const hostId = match.value.hostUserId;
+    if (!hostId) {
+      return;
+    }
+    const profile = await fetchReviewProfile(hostId);
+    const existing = profile.items.find(
+      (item) => item.matchId === match.value?.id && item.reviewerId === authStore.user?.id,
+    );
+    hasReviewed.value = Boolean(existing);
+    reviewCheckedForMatchId.value = match.value.id;
+  } catch {
+    // best-effort precheck; the API will still 409 on duplicate submit
+  }
+}
+
+async function handleSubmitReview() {
+  if (!match.value || !match.value.hostUserId || reviewSubmitting.value) {
+    return;
+  }
+
+  reviewSubmitting.value = true;
+  reviewError.value = '';
+
+  try {
+    await submitReview({
+      matchId: match.value.id,
+      revieweeId: match.value.hostUserId,
+      score: reviewScore.value,
+      tags: [...selectedReviewTags.value],
+    });
+    hasReviewed.value = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('409')) {
+      hasReviewed.value = true;
+      reviewError.value = '你已经评价过这位主理人，不需要重复评分。';
+    } else {
+      reviewError.value = '评价提交失败，请稍后再试。';
+    }
+  } finally {
+    reviewSubmitting.value = false;
+  }
+}
+
 async function handleCancelMatch() {
   if (!match.value || cancelling.value) {
     return;
@@ -372,6 +462,19 @@ watch(
     hostedApplications.value = [];
     if (match.value && authStore.token) {
       void loadMyApplicationStatus();
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  canReviewHost,
+  (value) => {
+    if (value) {
+      void checkExistingReview();
+    } else {
+      hasReviewed.value = false;
+      reviewCheckedForMatchId.value = '';
     }
   },
   { immediate: true },
@@ -561,7 +664,60 @@ if (initialMatchId) {
         </view>
       </view>
 
-      <view v-else class="cta-bar" data-testid="join-bar">
+      <view v-if="canReviewHost" class="panel panel-last review-panel" data-testid="review-panel">
+        <text class="panel-label">球局结束后评价主理人</text>
+        <text class="panel-value">为这次约球的体验打个分，你的反馈会影响主理人的信用分。</text>
+
+        <view v-if="hasReviewed" class="review-confirm" data-testid="review-confirm">
+          <text class="review-confirm-title">已完成评价</text>
+          <text class="review-confirm-copy">感谢你的反馈，主理人的信用分已经更新。</text>
+        </view>
+
+        <view v-else>
+          <view class="review-stars" data-testid="review-stars">
+            <button
+              v-for="value in 5"
+              :key="value"
+              type="button"
+              class="review-star"
+              :class="{ 'review-star--active': value <= reviewScore }"
+              :data-testid="`review-star-${value}`"
+              @click="setReviewScore(value)"
+            >
+              {{ value <= reviewScore ? '★' : '☆' }}
+            </button>
+          </view>
+          <text class="review-score-copy">当前评分：{{ reviewScore }} 分</text>
+
+          <view class="review-tags">
+            <button
+              v-for="tag in reviewTagOptions"
+              :key="tag.value"
+              type="button"
+              class="review-tag"
+              :class="{ 'review-tag--active': selectedReviewTags.includes(tag.value) }"
+              :data-testid="`review-tag-${tag.value}`"
+              @click="toggleReviewTag(tag.value)"
+            >
+              {{ tag.label }}
+            </button>
+          </view>
+
+          <text v-if="reviewError" class="error-copy">{{ reviewError }}</text>
+
+          <button
+            type="button"
+            class="application-button application-button--primary"
+            data-testid="submit-review"
+            :disabled="reviewSubmitting"
+            @click="handleSubmitReview"
+          >
+            {{ reviewSubmitting ? '提交中...' : '提交评价' }}
+          </button>
+        </view>
+      </view>
+
+      <view v-else-if="!isHost" class="cta-bar" data-testid="join-bar">
         <view class="cta-copy">
           <text class="cta-title">
             {{
@@ -854,5 +1010,83 @@ if (initialMatchId) {
   color: $color-primary;
   font-size: 22rpx;
   font-weight: 700;
+}
+
+.review-panel {
+  margin-bottom: 32rpx;
+}
+
+.review-stars {
+  display: flex;
+  gap: 12rpx;
+  margin: 18rpx 0 8rpx;
+}
+
+.review-star {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(15, 28, 46, 0.1);
+  background: rgba(255, 253, 249, 0.98);
+  color: $color-muted;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 64rpx;
+  text-align: center;
+}
+
+.review-star--active {
+  background: rgba(255, 198, 81, 0.22);
+  color: #d99500;
+  border-color: rgba(217, 149, 0, 0.55);
+}
+
+.review-score-copy {
+  color: $color-muted;
+  font-size: 22rpx;
+  margin-bottom: 18rpx;
+}
+
+.review-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.review-tag {
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(15, 28, 46, 0.12);
+  background: rgba(255, 253, 249, 0.98);
+  color: $color-muted;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.review-tag--active {
+  background: rgba(255, 106, 61, 0.12);
+  color: $color-primary;
+  border-color: rgba(255, 106, 61, 0.55);
+}
+
+.review-confirm {
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: rgba(46, 196, 134, 0.08);
+}
+
+.review-confirm-title {
+  display: block;
+  color: #16864e;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.review-confirm-copy {
+  display: block;
+  margin-top: 8rpx;
+  color: $color-muted;
+  font-size: 22rpx;
 }
 </style>
