@@ -1,13 +1,68 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { fetchPublicProfile, fetchReviewProfile } from '../../services/api';
+import { computed, onMounted, ref } from 'vue';
+import { fetchPublicProfile, fetchReviewProfile, reportUser } from '../../services/api';
 import type { PublicUserProfile, ReviewProfile } from '../../services/types';
+import { useAuthStore } from '../../stores/auth';
 import { formatLevel } from '../../utils/copy';
 
+const authStore = useAuthStore();
 const profile = ref<PublicUserProfile | null>(null);
 const reviewSummary = ref<ReviewProfile | null>(null);
 const loading = ref(true);
 const errorMessage = ref('');
+const reportOpen = ref(false);
+const reportReason = ref('');
+const reportSubmitting = ref(false);
+const reportError = ref('');
+const reportDone = ref(false);
+
+const canReport = computed(() => {
+  return Boolean(authStore.token && profile.value && authStore.user?.id !== profile.value.id);
+});
+
+function openReport() {
+  if (!authStore.token) {
+    uni.navigateTo({
+      url: `/pages/login/index?redirect=${encodeURIComponent(`/pages/user-profile/index?id=${profile.value?.id ?? ''}`)}`,
+    });
+    return;
+  }
+  reportOpen.value = true;
+  reportReason.value = '';
+  reportError.value = '';
+  reportDone.value = false;
+}
+
+function closeReport() {
+  reportOpen.value = false;
+}
+
+async function submitReport() {
+  if (!profile.value || reportSubmitting.value) {
+    return;
+  }
+
+  const trimmed = reportReason.value.trim();
+  if (trimmed.length < 1) {
+    reportError.value = '请简单写一下举报原因，方便我们处理。';
+    return;
+  }
+
+  reportSubmitting.value = true;
+  reportError.value = '';
+
+  try {
+    await reportUser({
+      targetUserId: profile.value.id,
+      reason: trimmed,
+    });
+    reportDone.value = true;
+  } catch {
+    reportError.value = '举报提交失败，请稍后再试。';
+  } finally {
+    reportSubmitting.value = false;
+  }
+}
 
 function getUserIdFromLocation() {
   if (typeof window === 'undefined') {
@@ -101,6 +156,14 @@ onMounted(() => {
           </view>
         </view>
         <text class="hero-since">加入时间：{{ formatDate(profile.createdAt) }}</text>
+        <button
+          v-if="canReport"
+          class="report-button"
+          data-testid="open-report"
+          @click="openReport"
+        >
+          举报该球友
+        </button>
       </view>
 
       <view class="card">
@@ -131,6 +194,40 @@ onMounted(() => {
         </view>
       </view>
     </template>
+
+    <view v-if="reportOpen" class="modal-mask">
+      <view class="modal-card">
+        <text class="modal-title">举报 {{ profile?.nickname }}</text>
+        <text v-if="!reportDone" class="modal-copy">告诉我们发生了什么，运营会在 24 小时内处理。</text>
+        <text v-else class="modal-copy">已收到你的举报，感谢反馈。</text>
+
+        <textarea
+          v-if="!reportDone"
+          v-model="reportReason"
+          class="modal-textarea"
+          maxlength="280"
+          data-testid="report-reason"
+          placeholder="例如：到场后并未约球、骚扰球友等"
+        />
+
+        <text v-if="reportError" class="error-copy">{{ reportError }}</text>
+
+        <view class="modal-actions">
+          <button class="modal-btn modal-btn--ghost" @click="closeReport">
+            {{ reportDone ? '关闭' : '取消' }}
+          </button>
+          <button
+            v-if="!reportDone"
+            class="modal-btn"
+            data-testid="report-submit"
+            :disabled="reportSubmitting"
+            @click="submitReport"
+          >
+            {{ reportSubmitting ? '提交中...' : '提交举报' }}
+          </button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -268,5 +365,92 @@ onMounted(() => {
   color: $color-primary;
   font-size: 22rpx;
   font-weight: 700;
+}
+
+.report-button {
+  margin-top: 20rpx;
+  align-self: flex-start;
+  padding: 12rpx 28rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  background: rgba(15, 28, 46, 0.45);
+  z-index: 50;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 600rpx;
+  padding: 32rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  box-shadow: $shadow-card;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: $color-ink;
+}
+
+.modal-copy {
+  display: block;
+  margin-top: 12rpx;
+  color: $color-muted;
+  font-size: 24rpx;
+}
+
+.modal-textarea {
+  width: 100%;
+  min-height: 180rpx;
+  margin-top: 18rpx;
+  padding: 16rpx;
+  border-radius: 18rpx;
+  background: #fff7ef;
+  font-size: 26rpx;
+  color: $color-ink;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.modal-btn {
+  flex: 1;
+  min-height: 72rpx;
+  border-radius: 999rpx;
+  background: $color-primary;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.modal-btn[disabled] {
+  opacity: 0.6;
+}
+
+.modal-btn--ghost {
+  background: rgba(15, 28, 46, 0.08);
+  color: $color-ink;
+}
+
+.error-copy {
+  display: block;
+  margin-top: 12rpx;
+  color: #d44a4a;
+  font-size: 22rpx;
 }
 </style>

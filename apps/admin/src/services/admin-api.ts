@@ -101,6 +101,19 @@ export type AdminUserPayload = {
 
 export type AdminCreateUserPayload = Required<AdminUserPayload>;
 
+export type AdminReportRow = {
+  id: string;
+  reporterId: string;
+  reporterNickname: string;
+  targetUserId: string;
+  targetNickname: string;
+  targetPhone: string;
+  matchId: string | null;
+  reason: string;
+  status: 'open' | 'reviewed' | 'dismissed';
+  createdAt: string;
+};
+
 export type AdminReviewRow = {
   id: string;
   matchId: string;
@@ -252,6 +265,17 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
       return get<{ items: AdminReviewRow[] }>(query ? `/admin/reviews?${query}` : '/admin/reviews');
     },
     deleteReview: (reviewId: string) => remove(`/admin/reviews/${reviewId}`),
+    listReports: (filters: { status?: string; page?: number; pageSize?: number } = {}) => {
+      const query = Object.entries(filters)
+        .filter(([, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+        .join('&');
+      return get<{ items: AdminReportRow[]; page: number; pageSize: number; total: number }>(
+        query ? `/admin/reports?${query}` : '/admin/reports',
+      );
+    },
+    resolveReport: (reportId: string, status: 'reviewed' | 'dismissed') =>
+      send<{ ok: true; id: string; status: string }>('POST', `/admin/reports/${reportId}/resolve`, { status }),
   };
 
   async function removeReturning<T>(path: string) {

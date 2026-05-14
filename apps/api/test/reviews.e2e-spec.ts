@@ -203,6 +203,75 @@ describe('Reviews and credit', () => {
     expect(response.body.reviewee.creditScore).toBe(0);
   });
 
+  it('keeps the review anonymous when submitted with the anonymous flag', async () => {
+    const token = await login();
+    const response = await request(app.getHttpServer())
+      .post('/reviews')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        matchId: 'match-seed-1',
+        revieweeId: 'user-reviewee-1',
+        score: 5,
+        tags: ['on_time'],
+        anonymous: true,
+      })
+      .expect(201);
+
+    const profileResponse = await request(app.getHttpServer())
+      .get('/reviews/profile/user-reviewee-1')
+      .expect(200);
+    const anonymous = profileResponse.body.items.find((item: { id: string }) => item.id === response.body.review.id);
+    expect(anonymous.reviewerId).toBe('');
+    expect(anonymous.reviewerName).toBe('匿名球友');
+    expect(anonymous.anonymous).toBe(true);
+  });
+
+  it('lets the reviewer withdraw their own review within the 24 hour window', async () => {
+    const token = await login();
+    const submit = await request(app.getHttpServer())
+      .post('/reviews')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        matchId: 'match-seed-1',
+        revieweeId: 'user-reviewee-1',
+        score: 5,
+        tags: [],
+      })
+      .expect(201);
+    const reviewId = submit.body.review.id as string;
+    const beforeCredit = submit.body.reviewee.creditScore as number;
+
+    await request(app.getHttpServer())
+      .delete(`/reviews/${reviewId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: true, id: reviewId });
+
+    expect(await prisma.review.findUnique({ where: { id: reviewId } })).toBeNull();
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: 'user-reviewee-1' } });
+    expect(after.creditScore).toBe(Math.max(0, beforeCredit - 1));
+  });
+
+  it('rejects a withdraw attempt from a different user', async () => {
+    const ownerToken = await login();
+    const submit = await request(app.getHttpServer())
+      .post('/reviews')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        matchId: 'match-seed-1',
+        revieweeId: 'user-reviewee-1',
+        score: 5,
+        tags: [],
+      })
+      .expect(201);
+    const reviewId = submit.body.review.id as string;
+
+    const otherToken = await login('13700137000');
+    await request(app.getHttpServer())
+      .delete(`/reviews/${reviewId}`)
+      .set('Authorization', `Bearer ${otherToken}`)
+      .expect(403);
+  });
+
   it('returns a persisted profile review summary for a user', async () => {
     await prisma.review.deleteMany({
       where: { revieweeId: 'user-13800138000' },

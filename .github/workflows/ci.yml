@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Verify ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [admin, mobile, api]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pingpang
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pingpang
+      REDIS_URL: redis://localhost:6379
+      NODE_ENV: test
+      AUTH_TOKEN_SECRET: ci-test-secret
+      ADMIN_TOKEN: dev-admin-token
+      ALLOW_DEV_LOGIN: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Workspace smoke test
+        if: matrix.target == 'api'
+        run: pnpm test
+
+      - name: Generate prisma client
+        if: matrix.target == 'api'
+        run: pnpm --filter @pingpang/api exec prisma generate
+
+      - name: Push prisma schema
+        if: matrix.target == 'api'
+        run: pnpm --filter @pingpang/api exec prisma db push --accept-data-loss
+
+      - name: API typecheck
+        if: matrix.target == 'api'
+        run: pnpm --filter @pingpang/api exec tsc --noEmit -p tsconfig.json
+
+      - name: API build
+        if: matrix.target == 'api'
+        run: pnpm --filter @pingpang/api build
+
+      - name: API e2e
+        if: matrix.target == 'api'
+        run: pnpm --filter @pingpang/api exec jest --runInBand --config ./test/jest-e2e.json
+
+      - name: Admin typecheck
+        if: matrix.target == 'admin'
+        run: pnpm --filter @pingpang/admin typecheck
+
+      - name: Admin tests
+        if: matrix.target == 'admin'
+        run: pnpm --filter @pingpang/admin test
+
+      - name: Admin build
+        if: matrix.target == 'admin'
+        run: pnpm --filter @pingpang/admin build
+
+      - name: Mobile typecheck
+        if: matrix.target == 'mobile'
+        run: pnpm --filter @pingpang/mobile exec vue-tsc --noEmit -p tsconfig.json
+
+      - name: Mobile tests
+        if: matrix.target == 'mobile'
+        run: pnpm --filter @pingpang/mobile test
+
+      - name: Mobile h5 build
+        if: matrix.target == 'mobile'
+        run: pnpm --filter @pingpang/mobile build:h5
+
+      - name: Mobile mp-weixin build
+        if: matrix.target == 'mobile'
+        run: pnpm --filter @pingpang/mobile build:mp-weixin
+        env:
+          VITE_API_BASE_URL_MP_WEIXIN: https://api.pingpang.example.com

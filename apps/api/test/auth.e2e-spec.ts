@@ -33,6 +33,50 @@ describe('Auth flow', () => {
     await prisma.user.deleteMany();
   });
 
+  it('updates the authenticated user nickname and rejects out-of-range values', async () => {
+    const phone = '13800138000';
+    const verifyResponse = await request(app.getHttpServer())
+      .post('/auth/verify-code')
+      .send({ phone, code: '123456' })
+      .expect(201);
+    const token = verifyResponse.body.token as string;
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nickname: '新昵称', city: '杭州', level: 'advanced' })
+      .expect(200);
+
+    expect(updateResponse.body.nickname).toBe('新昵称');
+    expect(updateResponse.body.city).toBe('杭州');
+    expect(updateResponse.body.level).toBe('advanced');
+
+    await request(app.getHttpServer())
+      .patch('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ level: 'guru' })
+      .expect(400);
+  });
+
+  it('returns a public user profile without exposing the phone number', async () => {
+    const phone = '13800138000';
+    const verifyResponse = await request(app.getHttpServer())
+      .post('/auth/verify-code')
+      .send({ phone, code: '123456' })
+      .expect(201);
+
+    const userId = verifyResponse.body.user.id as string;
+    const response = await request(app.getHttpServer())
+      .get(`/users/${userId}`)
+      .expect(200);
+
+    expect(response.body.id).toBe(userId);
+    expect(response.body.nickname).toBeDefined();
+    expect(response.body.phone).toBeUndefined();
+    expect(response.body.hostedMatches).toEqual(expect.any(Number));
+    expect(response.body.joinedMatches).toEqual(expect.any(Number));
+  });
+
   it('revokes the current session and blocks subsequent token use', async () => {
     const phone = '13800138000';
     await request(app.getHttpServer()).post('/auth/request-code').send({ phone }).expect(201);

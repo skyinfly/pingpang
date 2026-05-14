@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import {
   AdminApplicationRow,
   AdminMatchRow,
+  AdminReportRow,
   AdminReviewRow,
   AdminSummary,
   AdminUserRow,
@@ -14,7 +15,7 @@ import {
 } from './services/admin-api';
 import { DEFAULT_ADMIN_TOKEN, getStoredAdminToken, saveAdminToken } from './services/admin-token';
 
-type TabKey = 'applications' | 'matches' | 'users' | 'venues' | 'reviews';
+type TabKey = 'applications' | 'matches' | 'users' | 'venues' | 'reviews' | 'reports';
 type EditorState = {
   resource: TabKey;
   id?: string;
@@ -37,6 +38,61 @@ const venues = ref<AdminVenueRow[]>([]);
 const applications = ref<AdminApplicationRow[]>([]);
 const reviews = ref<AdminReviewRow[]>([]);
 const deletingReviewId = ref<string | null>(null);
+const reports = ref<AdminReportRow[]>([]);
+const resolvingReportId = ref<string | null>(null);
+const matchSearch = ref('');
+const userSearch = ref('');
+const venueSearch = ref('');
+
+function normalize(value: string | null | undefined) {
+  return (value ?? '').toLowerCase().trim();
+}
+
+const filteredMatches = computed(() => {
+  const query = normalize(matchSearch.value);
+  if (!query) {
+    return matches.value;
+  }
+  return matches.value.filter((match) => {
+    return (
+      normalize(match.title).includes(query) ||
+      normalize(match.venueName).includes(query) ||
+      normalize(match.hostNickname).includes(query) ||
+      normalize(match.hostPhone).includes(query) ||
+      normalize(match.city).includes(query) ||
+      normalize(match.level).includes(query)
+    );
+  });
+});
+
+const filteredUsers = computed(() => {
+  const query = normalize(userSearch.value);
+  if (!query) {
+    return users.value;
+  }
+  return users.value.filter((user) => {
+    return (
+      normalize(user.nickname).includes(query) ||
+      normalize(user.phone).includes(query) ||
+      normalize(user.city).includes(query) ||
+      normalize(user.level).includes(query)
+    );
+  });
+});
+
+const filteredVenues = computed(() => {
+  const query = normalize(venueSearch.value);
+  if (!query) {
+    return venues.value;
+  }
+  return venues.value.filter((venue) => {
+    return (
+      normalize(venue.name).includes(query) ||
+      normalize(venue.city).includes(query) ||
+      normalize(venue.district).includes(query)
+    );
+  });
+});
 const editor = ref<EditorState | null>(null);
 const form = ref<Record<string, string | number | boolean>>({});
 const expandedVenueId = ref<string | null>(null);
@@ -104,13 +160,14 @@ async function loadDashboard() {
   errorMessage.value = '';
 
   try {
-    const [summaryPayload, matchPayload, userPayload, venuePayload, applicationPayload, reviewPayload] = await Promise.all([
+    const [summaryPayload, matchPayload, userPayload, venuePayload, applicationPayload, reviewPayload, reportPayload] = await Promise.all([
       api.value.getSummary(),
       api.value.listMatches(),
       api.value.listUsers(),
       api.value.listVenues(),
       api.value.listApplications('pending'),
       api.value.listReviews(),
+      api.value.listReports({ status: 'open' }),
     ]);
 
     summary.value = summaryPayload;
@@ -119,6 +176,7 @@ async function loadDashboard() {
     venues.value = venuePayload.items;
     applications.value = applicationPayload.items;
     reviews.value = reviewPayload.items;
+    reports.value = reportPayload.items;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '后台数据请求失败，请稍后重试';
   } finally {
@@ -139,6 +197,20 @@ async function approveApplication(applicationId: string) {
     errorMessage.value = error instanceof Error ? error.message : '通过申请失败，请稍后再试';
   } finally {
     decidingApplicationId.value = null;
+  }
+}
+
+async function resolveReport(reportId: string, status: 'reviewed' | 'dismissed') {
+  resolvingReportId.value = reportId;
+  errorMessage.value = '';
+
+  try {
+    await api.value.resolveReport(reportId, status);
+    reports.value = reports.value.filter((report) => report.id !== reportId);
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '处理举报失败，请稍后再试';
+  } finally {
+    resolvingReportId.value = null;
   }
 }
 
@@ -626,6 +698,15 @@ onMounted(() => {
             >
               评价审核
             </button>
+            <button
+              data-testid="tab-reports"
+              :class="{ active: activeTab === 'reports' }"
+              type="button"
+              @click="switchTab('reports')"
+            >
+              举报处理
+              <span v-if="reports.length" class="badge">{{ reports.length }}</span>
+            </button>
           </div>
 
           <button
@@ -793,6 +874,16 @@ onMounted(() => {
           </table>
         </div>
 
+        <div v-if="activeTab === 'matches'" class="table-search">
+          <input
+            v-model="matchSearch"
+            class="search-input"
+            data-testid="match-search"
+            placeholder="搜索标题 / 球馆 / 主理人手机号..."
+          />
+          <span class="search-count">{{ filteredMatches.length }} / {{ matches.length }}</span>
+        </div>
+
         <div v-if="activeTab === 'matches'" class="table-wrap">
           <table>
             <thead>
@@ -807,7 +898,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="match in matches" :key="match.id">
+              <tr v-for="match in filteredMatches" :key="match.id">
                 <td>
                   <strong>{{ match.title }}</strong>
                   <small>{{ match.city }} / {{ match.level }}</small>
@@ -841,6 +932,16 @@ onMounted(() => {
           </table>
         </div>
 
+        <div v-if="activeTab === 'users'" class="table-search">
+          <input
+            v-model="userSearch"
+            class="search-input"
+            data-testid="user-search"
+            placeholder="搜索昵称 / 手机号 / 城市..."
+          />
+          <span class="search-count">{{ filteredUsers.length }} / {{ users.length }}</span>
+        </div>
+
         <div v-if="activeTab === 'users'" class="table-wrap">
           <table>
             <thead>
@@ -855,7 +956,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in users" :key="user.id">
+              <tr v-for="user in filteredUsers" :key="user.id">
                 <td>
                   <strong>{{ user.nickname }}</strong>
                   <small>{{ user.phone }}</small>
@@ -874,6 +975,16 @@ onMounted(() => {
           </table>
         </div>
 
+        <div v-if="activeTab === 'venues'" class="table-search">
+          <input
+            v-model="venueSearch"
+            class="search-input"
+            data-testid="venue-search"
+            placeholder="搜索球馆名 / 区域..."
+          />
+          <span class="search-count">{{ filteredVenues.length }} / {{ venues.length }}</span>
+        </div>
+
         <div v-if="activeTab === 'venues'" class="table-wrap">
           <table>
             <thead>
@@ -888,7 +999,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <template v-for="venue in venues" :key="venue.id">
+              <template v-for="venue in filteredVenues" :key="venue.id">
                 <tr>
                   <td>
                     <strong>{{ venue.name }}</strong>
@@ -1072,6 +1183,69 @@ onMounted(() => {
               </tr>
               <tr v-if="!reviews.length">
                 <td colspan="7" class="empty-row">还没有评价记录，球友评价后会出现在这里。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="activeTab === 'reports'" class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>状态</th>
+                <th>被举报人</th>
+                <th>举报人</th>
+                <th>球局</th>
+                <th>原因</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="report in reports" :key="report.id">
+                <td>
+                  <span class="status" :class="{ muted: report.status !== 'open' }">
+                    {{
+                      report.status === 'open'
+                        ? '待处理'
+                        : report.status === 'reviewed'
+                          ? '已确认'
+                          : '已驳回'
+                    }}
+                  </span>
+                </td>
+                <td>
+                  <strong>{{ report.targetNickname }}</strong>
+                  <small>{{ report.targetPhone }}</small>
+                </td>
+                <td>
+                  <strong>{{ report.reporterNickname }}</strong>
+                </td>
+                <td>{{ report.matchId ?? '无' }}</td>
+                <td class="report-reason">{{ report.reason }}</td>
+                <td>{{ formatDateTime(report.createdAt) }}</td>
+                <td class="actions">
+                  <button
+                    type="button"
+                    class="primary-action"
+                    :data-testid="`report-confirm-${report.id}`"
+                    :disabled="resolvingReportId === report.id"
+                    @click="resolveReport(report.id, 'reviewed')"
+                  >
+                    {{ resolvingReportId === report.id ? '处理中' : '确认违规' }}
+                  </button>
+                  <button
+                    type="button"
+                    :data-testid="`report-dismiss-${report.id}`"
+                    :disabled="resolvingReportId === report.id"
+                    @click="resolveReport(report.id, 'dismissed')"
+                  >
+                    驳回
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!reports.length">
+                <td colspan="7" class="empty-row">当前没有待处理的举报，运营辛苦了。</td>
               </tr>
             </tbody>
           </table>
@@ -1467,6 +1641,36 @@ td small {
   border-radius: 999px;
   background: rgba(180, 58, 44, 0.12);
   color: #8e2e22;
+  font-weight: 800;
+}
+
+.report-reason {
+  max-width: 360px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.table-search {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(29, 52, 39, 0.06);
+}
+
+.search-input {
+  flex: 1;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #ced8cf;
+  border-radius: 14px;
+  background: #fffdf7;
+  font-size: 14px;
+}
+
+.search-count {
+  color: #67736c;
+  font-size: 12px;
   font-weight: 800;
 }
 </style>

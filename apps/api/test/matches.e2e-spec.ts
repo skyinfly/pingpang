@@ -495,6 +495,80 @@ describe('Matches listing', () => {
       .expect(400);
   });
 
+  it('issues a check-in code idempotently and accepts a member check-in', async () => {
+    const hostToken = await login('13900139000');
+    const applicantToken = await login();
+    const options = await request(app.getHttpServer()).get('/match-options').expect(200);
+    const slotId = options.body.timeSlots.find((slot: { slotId: string }) => slot.slotId === 'venue-slot-2').slotId;
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/matches')
+      .set('Authorization', `Bearer ${hostToken}`)
+      .send({
+        title: '签到测试局',
+        venueId: 'venue-seed-1',
+        courtId: 'venue-court-2',
+        slotId,
+        level: 'intermediate',
+        maxPlayers: 4,
+      })
+      .expect(201);
+    const matchId = createResponse.body.id as string;
+
+    const applyResponse = await request(app.getHttpServer())
+      .post(`/matches/${matchId}/applications`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({})
+      .expect(201);
+    const application = await prisma.matchApplication.findFirstOrThrow({
+      where: { matchId, userId: applyResponse.body.userId },
+    });
+    await request(app.getHttpServer())
+      .post(`/matches/${matchId}/applications/${application.id}/approve`)
+      .set('Authorization', `Bearer ${hostToken}`)
+      .expect(201);
+
+    const firstCode = await request(app.getHttpServer())
+      .post(`/matches/${matchId}/check-in-code`)
+      .set('Authorization', `Bearer ${hostToken}`)
+      .expect(201);
+    expect(firstCode.body.code).toMatch(/^[A-Z0-9]{6}$/);
+
+    const secondCode = await request(app.getHttpServer())
+      .post(`/matches/${matchId}/check-in-code`)
+      .set('Authorization', `Bearer ${hostToken}`)
+      .expect(201);
+    expect(secondCode.body.code).toBe(firstCode.body.code);
+
+    await request(app.getHttpServer())
+      .post(`/matches/${matchId}/check-in`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({ code: 'ZZZZZZ' })
+      .expect(403);
+
+    const checkInResponse = await request(app.getHttpServer())
+      .post(`/matches/${matchId}/check-in`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({ code: firstCode.body.code })
+      .expect(201);
+    expect(checkInResponse.body.ok).toBe(true);
+    expect(checkInResponse.body.alreadyCheckedIn).toBe(false);
+
+    const repeat = await request(app.getHttpServer())
+      .post(`/matches/${matchId}/check-in`)
+      .set('Authorization', `Bearer ${applicantToken}`)
+      .send({ code: firstCode.body.code })
+      .expect(201);
+    expect(repeat.body.alreadyCheckedIn).toBe(true);
+
+    const list = await request(app.getHttpServer())
+      .get(`/matches/${matchId}/check-ins`)
+      .set('Authorization', `Bearer ${hostToken}`)
+      .expect(200);
+    const memberRow = list.body.items.find((item: { userId: string }) => item.userId === applyResponse.body.userId);
+    expect(memberRow.checkedInAt).toBeTruthy();
+  });
+
   it('cancels a hosted match, fans out system messages, and hides it from the home feed', async () => {
     const hostToken = await login('13900139000');
     const applicantToken = await login();
