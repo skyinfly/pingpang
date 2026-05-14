@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { DevBearerGuard } from '../common/auth/dev-bearer.guard';
 import { AuthUser } from '../common/auth/auth-user.decorator';
@@ -18,7 +18,14 @@ export class ReviewsController {
       revieweeId: body.revieweeId,
       score: body.score,
       tags: body.tags,
+      anonymous: body.anonymous ?? false,
     });
+  }
+
+  @Delete(':id')
+  @UseGuards(DevBearerGuard)
+  withdraw(@AuthUser() user: SessionUser, @Param('id') id: string) {
+    return this.reviewsService.withdrawOwnReview(id, user.id);
   }
 
   @Get('profile/:userId')

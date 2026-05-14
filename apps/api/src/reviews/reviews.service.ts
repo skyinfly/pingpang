@@ -10,6 +10,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 
 const CREDIT_MIN = 0;
 const CREDIT_MAX = 100;
+const WITHDRAW_WINDOW_HOURS = 24;
 
 @Injectable()
 export class ReviewsService {
@@ -21,6 +22,7 @@ export class ReviewsService {
     revieweeId: string;
     score: number;
     tags: string[];
+    anonymous?: boolean;
   }) {
     if (!Number.isInteger(payload.score) || payload.score < 1 || payload.score > 5) {
       throw new BadRequestException('score must be an integer between 1 and 5');
@@ -109,6 +111,45 @@ export class ReviewsService {
     }
   }
 
+  async withdrawOwnReview(reviewId: string, reviewerId: string) {
+    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
+
+    if (!review) {
+      throw new NotFoundException(`Review ${reviewId} not found`);
+    }
+
+    if (review.reviewerId !== reviewerId) {
+      throw new ForbiddenException('You can only withdraw your own reviews');
+    }
+
+    const cutoff = Date.now() - WITHDRAW_WINDOW_HOURS * 60 * 60 * 1000;
+    if (review.createdAt.getTime() < cutoff) {
+      throw new ConflictException(
+        `Reviews can only be withdrawn within ${WITHDRAW_WINDOW_HOURS} hours of submission`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const reviewee = await tx.user.findUnique({
+        where: { id: review.revieweeId },
+        select: { creditScore: true },
+      });
+
+      await tx.review.delete({ where: { id: reviewId } });
+
+      if (reviewee) {
+        const delta = review.score >= 4 ? -1 : 2;
+        const next = Math.max(CREDIT_MIN, Math.min(CREDIT_MAX, reviewee.creditScore + delta));
+        await tx.user.update({
+          where: { id: review.revieweeId },
+          data: { creditScore: next },
+        });
+      }
+    });
+
+    return { ok: true, id: reviewId };
+  }
+
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
@@ -160,11 +201,12 @@ export class ReviewsService {
       items: reviews.map((review) => ({
         id: review.id,
         matchId: review.matchId,
-        reviewerId: review.reviewerId,
-        reviewerName: reviewerNameMap.get(review.reviewerId) ?? '球友',
+        reviewerId: review.anonymous ? '' : review.reviewerId,
+        reviewerName: review.anonymous ? '匿名球友' : reviewerNameMap.get(review.reviewerId) ?? '球友',
         revieweeId: review.revieweeId,
         score: review.score,
         tags: review.tags,
+        anonymous: review.anonymous,
         createdAt: review.createdAt.toISOString(),
       })),
     };

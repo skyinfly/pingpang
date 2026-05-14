@@ -185,6 +185,7 @@ exports.Prisma.MatchScalarFieldEnum = {
   maxPlayers: 'maxPlayers',
   openSlots: 'openSlots',
   status: 'status',
+  checkInCode: 'checkInCode',
   hostUserId: 'hostUserId',
   hostCreditScore: 'hostCreditScore',
   distanceKm: 'distanceKm',
@@ -208,6 +209,7 @@ exports.Prisma.ReviewScalarFieldEnum = {
   revieweeId: 'revieweeId',
   score: 'score',
   tags: 'tags',
+  anonymous: 'anonymous',
   createdAt: 'createdAt'
 };
 
@@ -233,7 +235,18 @@ exports.Prisma.ChatThreadParticipantScalarFieldEnum = {
   userId: 'userId',
   role: 'role',
   joinedAt: 'joinedAt',
-  lastReadAt: 'lastReadAt'
+  lastReadAt: 'lastReadAt',
+  checkedInAt: 'checkedInAt'
+};
+
+exports.Prisma.ReportScalarFieldEnum = {
+  id: 'id',
+  reporterId: 'reporterId',
+  targetUserId: 'targetUserId',
+  matchId: 'matchId',
+  reason: 'reason',
+  status: 'status',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.MessageScalarFieldEnum = {
@@ -281,6 +294,7 @@ exports.Prisma.ModelName = {
   Review: 'Review',
   ChatThread: 'ChatThread',
   ChatThreadParticipant: 'ChatThreadParticipant',
+  Report: 'Report',
   Message: 'Message'
 };
 

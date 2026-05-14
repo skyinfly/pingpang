@@ -31,6 +31,40 @@ const selectedTimeId = ref('');
 const selectedLevelId = ref('');
 const selectedPlayersId = ref('');
 
+function todayString() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(new Date());
+}
+
+function dayLabel(offset: number) {
+  const date = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const value = formatter.format(date);
+  const [, month, day] = value.split('-');
+  const weekday = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    weekday: 'short',
+  }).format(date);
+  let prefix = '';
+  if (offset === 0) prefix = '今天 · ';
+  else if (offset === 1) prefix = '明天 · ';
+  else if (offset === 2) prefix = '后天 · ';
+  return { value, display: `${prefix}${Number(month)}/${Number(day)} ${weekday}` };
+}
+
+const dateOptions = Array.from({ length: 14 }, (_, index) => dayLabel(index));
+const selectedDate = ref(todayString());
+
 const selectedVenue = computed(
   () => venueOptions.value.find((item) => item.id === selectedVenueId.value) ?? venueOptions.value[0] ?? null,
 );
@@ -114,6 +148,10 @@ function syncDraft() {
     level: selectedLevel.value?.value ?? 'intermediate',
     maxPlayers: selectedPlayers.value?.value ?? 4,
   });
+}
+
+function chooseDate(value: string) {
+  selectedDate.value = value;
 }
 
 function initializeSelections(options: MatchOptionsResponse) {
@@ -216,6 +254,7 @@ async function handlePublish() {
       slotId: selectedTime.value.slotId,
       level: selectedLevel.value.value,
       maxPlayers: selectedPlayers.value.value,
+      startDate: selectedDate.value,
     });
 
     uni.switchTab({
@@ -289,7 +328,23 @@ onMounted(() => {
       </view>
 
       <view class="option-block">
-        <text class="option-title">开局时间</text>
+        <text class="option-title">开局日期</text>
+        <view class="option-row option-row--scroll">
+          <button
+            v-for="option in dateOptions"
+            :key="option.value"
+            class="option-chip"
+            :class="{ 'option-chip--active': selectedDate === option.value }"
+            :data-testid="`date-option-${option.value}`"
+            @click="chooseDate(option.value)"
+          >
+            {{ option.display }}
+          </button>
+        </view>
+      </view>
+
+      <view class="option-block">
+        <text class="option-title">开局时段</text>
         <view class="option-row">
           <button
             v-for="time in availableTimeOptions"
@@ -477,6 +532,12 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 14rpx;
   margin-top: 16rpx;
+}
+
+.option-row--scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .option-chip {

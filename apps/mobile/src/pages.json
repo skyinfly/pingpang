@@ -49,6 +49,18 @@
       "style": {
         "navigationBarTitleText": "局内聊天"
       }
+    },
+    {
+      "path": "pages/user-profile/index",
+      "style": {
+        "navigationBarTitleText": "球友档案"
+      }
+    },
+    {
+      "path": "pages/edit-profile/index",
+      "style": {
+        "navigationBarTitleText": "编辑资料"
+      }
     }
   ],
   "globalStyle": {

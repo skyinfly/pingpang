@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MatchesService } from '../matches/matches.service';
+import { ReportsService } from '../reports/reports.service';
 
 type ApplicationCounts = {
   pending: number;
@@ -132,7 +133,16 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly matchesService: MatchesService,
+    private readonly reportsService: ReportsService,
   ) {}
+
+  listReports(filters: { status?: string; page?: number; pageSize?: number }) {
+    return this.reportsService.listReports(filters);
+  }
+
+  resolveReport(reportId: string, action: 'reviewed' | 'dismissed') {
+    return this.reportsService.resolveReport(reportId, action);
+  }
 
   async listReviews(
     filters: {

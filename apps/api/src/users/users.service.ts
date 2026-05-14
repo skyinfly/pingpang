@@ -19,6 +19,58 @@ export class UsersService {
     });
   }
 
+  async getPublicProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nickname: true,
+        city: true,
+        level: true,
+        creditScore: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const [hostedCount, joinedCount] = await Promise.all([
+      this.prisma.match.count({ where: { hostUserId: userId } }),
+      this.prisma.chatThreadParticipant.count({ where: { userId, role: 'member' } }),
+    ]);
+
+    return {
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+      hostedMatches: hostedCount,
+      joinedMatches: joinedCount,
+    };
+  }
+
+  async updateOwnProfile(userId: string, payload: { nickname?: string; city?: string; level?: string }) {
+    const data: { nickname?: string; city?: string; level?: string } = {};
+
+    if (payload.nickname !== undefined) {
+      data.nickname = payload.nickname.trim();
+    }
+
+    if (payload.city !== undefined) {
+      data.city = payload.city.trim();
+    }
+
+    if (payload.level !== undefined) {
+      data.level = payload.level;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    }
+
+    return this.prisma.user.update({ where: { id: userId }, data });
+  }
+
   async getProfileByToken(token: string): Promise<SessionUser> {
     const session = verifySessionToken(token);
 

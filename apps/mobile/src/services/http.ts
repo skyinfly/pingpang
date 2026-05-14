@@ -35,7 +35,7 @@
 
 const BASE_URL = resolveApiBaseUrl();
 
-type HttpMethod = 'GET' | 'POST';
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 type RequestOptions = {
   method?: HttpMethod;
@@ -47,7 +47,7 @@ export function http<T>(url: string, options: RequestOptions = {}) {
   return new Promise<T>((resolve, reject) => {
     uni.request({
       url: `${BASE_URL}${url}`,
-      method: options.method ?? 'GET',
+      method: (options.method ?? 'GET') as 'GET' | 'POST' | 'PUT' | 'DELETE',
       data: options.data,
       header: options.headers ?? {},
       success: (response) => {

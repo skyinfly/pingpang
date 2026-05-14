@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { MatchesModule } from './matches/matches.module';
 import { MessagesModule } from './messages/messages.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { AdminModule } from './admin/admin.module';
     MatchesModule,
     MessagesModule,
     ReviewsModule,
+    ReportsModule,
     AdminModule,
   ],
   controllers: [HealthController],

@@ -7,6 +7,23 @@
   creditScore: number;
 };
 
+export type PublicUserProfile = {
+  id: string;
+  nickname: string;
+  city: string;
+  level: string;
+  creditScore: number;
+  createdAt: string;
+  hostedMatches: number;
+  joinedMatches: number;
+};
+
+export type UpdateProfilePayload = {
+  nickname?: string;
+  city?: string;
+  level?: string;
+};
+
 export type SessionPayload = {
   token: string;
   user: SessionUser;
@@ -42,6 +59,7 @@ export type CreateMatchPayload = {
   slotId: string;
   level: string;
   maxPlayers: number;
+  startDate?: string;
 };
 
 export type MatchOptionVenue = {
@@ -186,6 +204,7 @@ export type ReviewSummary = {
   revieweeId: string;
   score: number;
   tags: string[];
+  anonymous?: boolean;
   createdAt: string;
 };
 
@@ -214,6 +233,7 @@ export type SubmitReviewPayload = {
   revieweeId: string;
   score: number;
   tags: string[];
+  anonymous?: boolean;
 };
 
 export type SubmitReviewResponse = {

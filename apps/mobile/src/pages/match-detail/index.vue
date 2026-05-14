@@ -4,11 +4,15 @@ import {
   applyToMatch,
   approveHostedApplication,
   cancelHostedMatch,
+  ensureMatchCheckInCode,
   fetchMatchById,
+  fetchMatchCheckIns,
   fetchMyMatchApplicationStatus,
   fetchReviewProfile,
   listHostedApplications,
   rejectHostedApplication,
+  reportUser,
+  submitMatchCheckIn,
   submitReview,
 } from '../../services/api';
 import type { HostedMatchApplication, MatchCard, MyMatchApplicationStatus } from '../../services/types';
@@ -31,10 +35,24 @@ const applicationsLoading = ref(false);
 const hostActionError = ref('');
 const cancelling = ref(false);
 const cancelError = ref('');
+const checkInCode = ref('');
+const checkInCodeLoading = ref(false);
+const checkInCodeError = ref('');
+const checkIns = ref<Array<{ userId: string; nickname: string; level: string; creditScore: number; role: string; checkedInAt: string | null }>>([]);
+const memberCheckInInput = ref('');
+const memberCheckInError = ref('');
+const memberCheckedIn = ref(false);
+const memberCheckInBusy = ref(false);
+const reportTarget = ref<{ userId: string; nickname: string } | null>(null);
+const reportReason = ref('');
+const reportSubmitting = ref(false);
+const reportError = ref('');
+const reportDone = ref(false);
 const reviewSubmitting = ref(false);
 const reviewError = ref('');
 const reviewScore = ref(5);
 const selectedReviewTags = ref<string[]>([]);
+const reviewAnonymous = ref(false);
 const hasReviewed = ref(false);
 const reviewCheckedForMatchId = ref('');
 
@@ -478,6 +496,7 @@ async function handleSubmitReview() {
       revieweeId: match.value.hostUserId,
       score: reviewScore.value,
       tags: [...selectedReviewTags.value],
+      anonymous: reviewAnonymous.value,
     });
     hasReviewed.value = true;
   } catch (error) {
@@ -490,6 +509,135 @@ async function handleSubmitReview() {
     }
   } finally {
     reviewSubmitting.value = false;
+  }
+}
+
+async function ensureCheckInCode() {
+  if (!match.value || !isHost.value) {
+    return;
+  }
+
+  checkInCodeLoading.value = true;
+  checkInCodeError.value = '';
+
+  try {
+    const response = await ensureMatchCheckInCode(match.value.id);
+    checkInCode.value = response.code;
+    await loadCheckIns();
+  } catch {
+    checkInCodeError.value = '生成签到码失败，请稍后再试。';
+  } finally {
+    checkInCodeLoading.value = false;
+  }
+}
+
+async function loadCheckIns() {
+  if (!match.value || !isHost.value) {
+    return;
+  }
+  try {
+    const response = await fetchMatchCheckIns(match.value.id);
+    checkIns.value = response.items;
+  } catch {
+    // ignore — soft load
+  }
+}
+
+async function submitMemberCheckIn() {
+  if (!match.value || memberCheckInBusy.value) {
+    return;
+  }
+
+  if (!/^[A-Za-z0-9]{6}$/.test(memberCheckInInput.value.trim())) {
+    memberCheckInError.value = '签到码是 6 位数字或字母。';
+    return;
+  }
+
+  memberCheckInBusy.value = true;
+  memberCheckInError.value = '';
+
+  try {
+    await submitMatchCheckIn(match.value.id, memberCheckInInput.value.trim().toUpperCase());
+    memberCheckedIn.value = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('403')) {
+      memberCheckInError.value = '签到码不正确，请向主理人确认。';
+    } else {
+      memberCheckInError.value = '签到失败，请稍后再试。';
+    }
+  } finally {
+    memberCheckInBusy.value = false;
+  }
+}
+
+function shareMatch() {
+  if (!match.value) {
+    return;
+  }
+
+  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/#/pages/match-detail/index?id=${encodeURIComponent(match.value.id)}`;
+  const shareTitle = `${match.value.title} · ${match.value.venueName}`;
+
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    void navigator
+      .share({
+        title: shareTitle,
+        text: `一起来打球吧：${shareTitle}`,
+        url: shareUrl,
+      })
+      .catch(() => undefined);
+    return;
+  }
+
+  if (typeof uni.setClipboardData === 'function') {
+    uni.setClipboardData({
+      data: shareUrl,
+      success: () => {
+        if (typeof uni.showToast === 'function') {
+          uni.showToast({ title: '链接已复制，去分享给球友吧', icon: 'none' });
+        }
+      },
+    });
+  }
+}
+
+function openReport(userId: string, nickname: string) {
+  reportTarget.value = { userId, nickname };
+  reportReason.value = '';
+  reportError.value = '';
+  reportDone.value = false;
+}
+
+function closeReport() {
+  reportTarget.value = null;
+}
+
+async function submitReport() {
+  if (!reportTarget.value || reportSubmitting.value) {
+    return;
+  }
+
+  const trimmed = reportReason.value.trim();
+  if (trimmed.length < 1) {
+    reportError.value = '请简单写一下举报原因，方便我们处理。';
+    return;
+  }
+
+  reportSubmitting.value = true;
+  reportError.value = '';
+
+  try {
+    await reportUser({
+      targetUserId: reportTarget.value.userId,
+      reason: trimmed,
+      matchId: match.value?.id,
+    });
+    reportDone.value = true;
+  } catch {
+    reportError.value = '举报提交失败，请稍后再试。';
+  } finally {
+    reportSubmitting.value = false;
   }
 }
 
@@ -619,15 +767,77 @@ if (initialMatchId) {
       <view v-if="isHost && !isCancelled" class="panel panel-last">
         <text class="panel-label">主理人操作</text>
         <text class="panel-value">局内沟通不顺或场馆变动时，可以提前取消这场球局，已通过的球友会收到系统消息。</text>
-        <button
-          class="application-button application-button--secondary"
-          data-testid="cancel-hosted-match"
-          :disabled="cancelling"
-          @click="handleCancelMatch"
-        >
-          {{ cancelling ? '取消中...' : '取消这场球局' }}
-        </button>
+        <view class="action-row">
+          <button
+            class="application-button application-button--secondary"
+            data-testid="cancel-hosted-match"
+            :disabled="cancelling"
+            @click="handleCancelMatch"
+          >
+            {{ cancelling ? '取消中...' : '取消这场球局' }}
+          </button>
+          <button class="application-button application-button--ghost" data-testid="share-match" @click="shareMatch">
+            分享给球友
+          </button>
+        </view>
         <text v-if="cancelError" class="error-copy">{{ cancelError }}</text>
+      </view>
+
+      <view v-if="isHost" class="panel panel-last">
+        <text class="panel-label">现场签到</text>
+        <text class="panel-value">让到场的球友输入下面的签到码，方便记录出勤和后续打分。</text>
+        <view v-if="checkInCode" class="check-in-code-display" data-testid="check-in-code">
+          <text class="check-in-code">{{ checkInCode }}</text>
+          <button class="application-button application-button--ghost" @click="ensureCheckInCode">刷新</button>
+        </view>
+        <button
+          v-else
+          class="application-button application-button--primary"
+          data-testid="ensure-check-in-code"
+          :disabled="checkInCodeLoading"
+          @click="ensureCheckInCode"
+        >
+          {{ checkInCodeLoading ? '生成中...' : '生成签到码' }}
+        </button>
+        <text v-if="checkInCodeError" class="error-copy">{{ checkInCodeError }}</text>
+
+        <view v-if="checkIns.length" class="check-in-list">
+          <view
+            v-for="entry in checkIns.filter((c) => c.role === 'member')"
+            :key="entry.userId"
+            class="check-in-row"
+          >
+            <text class="check-in-name">{{ entry.nickname }}</text>
+            <text class="check-in-status" :class="{ 'check-in-status--done': entry.checkedInAt }">
+              {{ entry.checkedInAt ? '已签到' : '未签到' }}
+            </text>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="!isHost && isMember && !isCancelled" class="panel panel-last">
+        <text class="panel-label">现场签到</text>
+        <text class="panel-value" v-if="!memberCheckedIn">向主理人要 6 位签到码，到场后输入即可。</text>
+        <text class="panel-value" v-else>已签到，本次出勤会计入历史记录。</text>
+
+        <view v-if="!memberCheckedIn" class="check-in-input-row">
+          <input
+            v-model="memberCheckInInput"
+            class="check-in-input"
+            maxlength="6"
+            placeholder="6 位签到码"
+            data-testid="member-check-in-input"
+          />
+          <button
+            class="application-button application-button--primary"
+            data-testid="submit-check-in"
+            :disabled="memberCheckInBusy"
+            @click="submitMemberCheckIn"
+          >
+            {{ memberCheckInBusy ? '验证中...' : '签到' }}
+          </button>
+        </view>
+        <text v-if="memberCheckInError" class="error-copy">{{ memberCheckInError }}</text>
       </view>
 
       <view v-if="isHost" class="panel panel-last">
@@ -818,6 +1028,19 @@ if (initialMatchId) {
             </button>
           </view>
 
+          <view class="anonymous-row">
+            <button
+              type="button"
+              class="anonymous-toggle"
+              :class="{ 'anonymous-toggle--on': reviewAnonymous }"
+              data-testid="review-anonymous-toggle"
+              @click="reviewAnonymous = !reviewAnonymous"
+            >
+              {{ reviewAnonymous ? '✓ 匿名提交' : '匿名提交' }}
+            </button>
+            <text class="anonymous-hint">勾选后主理人个人主页只会看到「匿名球友」</text>
+          </view>
+
           <text v-if="reviewError" class="error-copy">{{ reviewError }}</text>
 
           <button
@@ -848,17 +1071,64 @@ if (initialMatchId) {
           <text v-else-if="applied || isPendingApplication" class="success-copy">已申请，等待主理人确认</text>
         </view>
 
-        <button
-          type="button"
-          class="cta-button"
-          data-testid="join-match"
-          :disabled="isCtaDisabled"
-          @click="handleJoin"
-        >
-          {{ ctaLabel }}
-        </button>
+        <view class="cta-actions">
+          <button
+            type="button"
+            class="cta-button"
+            data-testid="join-match"
+            :disabled="isCtaDisabled"
+            @click="handleJoin"
+          >
+            {{ ctaLabel }}
+          </button>
+          <view class="cta-secondary-row">
+            <button class="cta-secondary" data-testid="share-match-cta" @click="shareMatch">分享</button>
+            <button
+              v-if="match?.hostUserId"
+              class="cta-secondary"
+              data-testid="report-host"
+              @click="openReport(match.hostUserId, '本场主理人')"
+            >
+              举报主理人
+            </button>
+          </view>
+        </view>
       </view>
     </template>
+
+    <view v-if="reportTarget" class="modal-mask" data-testid="report-modal">
+      <view class="modal-card">
+        <text class="modal-title">举报 {{ reportTarget.nickname }}</text>
+        <text class="modal-copy" v-if="!reportDone">告诉我们发生了什么，运营会在 24 小时内处理。</text>
+        <text class="modal-copy" v-else>已收到你的举报，感谢反馈。</text>
+
+        <textarea
+          v-if="!reportDone"
+          v-model="reportReason"
+          class="modal-textarea"
+          maxlength="280"
+          data-testid="report-reason"
+          placeholder="比如：到场后发现并未约球、言语骚扰..."
+        />
+
+        <text v-if="reportError" class="error-copy">{{ reportError }}</text>
+
+        <view class="modal-actions">
+          <button class="application-button application-button--ghost" @click="closeReport">
+            {{ reportDone ? '关闭' : '取消' }}
+          </button>
+          <button
+            v-if="!reportDone"
+            class="application-button application-button--primary"
+            data-testid="report-submit"
+            :disabled="reportSubmitting"
+            @click="submitReport"
+          >
+            {{ reportSubmitting ? '提交中...' : '提交举报' }}
+          </button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -1228,5 +1498,183 @@ if (initialMatchId) {
 .review-confirm--inline {
   padding: 16rpx;
   border-radius: 20rpx;
+}
+
+.anonymous-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  margin-bottom: 18rpx;
+}
+
+.anonymous-toggle {
+  align-self: flex-start;
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(15, 28, 46, 0.06);
+  color: $color-muted;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.anonymous-toggle--on {
+  background: rgba(255, 106, 61, 0.14);
+  color: $color-primary;
+}
+
+.anonymous-hint {
+  color: $color-muted;
+  font-size: 20rpx;
+}
+
+.action-row {
+  display: flex;
+  gap: 14rpx;
+}
+
+.action-row .application-button {
+  flex: 1;
+}
+
+.check-in-code-display {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding: 18rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 106, 61, 0.12);
+}
+
+.check-in-code {
+  flex: 1;
+  font-size: 56rpx;
+  font-weight: 800;
+  letter-spacing: 16rpx;
+  color: $color-primary;
+}
+
+.check-in-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-top: 18rpx;
+}
+
+.check-in-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 16rpx;
+  border-radius: 16rpx;
+  background: rgba(15, 28, 46, 0.04);
+  font-size: 24rpx;
+}
+
+.check-in-name {
+  color: $color-ink;
+  font-weight: 700;
+}
+
+.check-in-status {
+  color: $color-muted;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.check-in-status--done {
+  color: #16864e;
+}
+
+.check-in-input-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.check-in-input {
+  flex: 1;
+  border-radius: 24rpx;
+  padding: 16rpx 24rpx;
+  background: #fff7ef;
+  font-size: 30rpx;
+  letter-spacing: 6rpx;
+  text-align: center;
+}
+
+.cta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.cta-secondary-row {
+  display: flex;
+  gap: 12rpx;
+}
+
+.cta-secondary {
+  flex: 1;
+  min-height: 64rpx;
+  border-radius: 999rpx;
+  background: rgba(15, 28, 46, 0.06);
+  color: $color-muted;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  background: rgba(15, 28, 46, 0.45);
+  z-index: 50;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 600rpx;
+  padding: 32rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  box-shadow: $shadow-card;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: $color-ink;
+}
+
+.modal-copy {
+  display: block;
+  margin-top: 12rpx;
+  color: $color-muted;
+  font-size: 24rpx;
+}
+
+.modal-textarea {
+  width: 100%;
+  min-height: 180rpx;
+  margin-top: 18rpx;
+  padding: 16rpx;
+  border-radius: 18rpx;
+  background: #fff7ef;
+  font-size: 26rpx;
+  color: $color-ink;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.modal-actions .application-button {
+  flex: 1;
 }
 </style>

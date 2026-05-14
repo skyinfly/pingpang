@@ -152,6 +152,24 @@ export class AdminController {
     return this.adminService.deleteReview(id);
   }
 
+  @Get('reports')
+  listReports(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.adminService.listReports({
+      status,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
+  }
+
+  @Post('reports/:id/resolve')
+  resolveReport(@Param('id') id: string, @Body() body: { status?: 'reviewed' | 'dismissed' }) {
+    return this.adminService.resolveReport(id, body?.status === 'dismissed' ? 'dismissed' : 'reviewed');
+  }
+
   @Post('applications/:id/approve')
   approveApplication(@Param('id') id: string) {
     return this.adminService.approveApplication(id);

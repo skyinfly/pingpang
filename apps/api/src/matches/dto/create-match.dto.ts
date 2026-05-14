@@ -1,4 +1,4 @@
-import { IsInt, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateMatchDto {
   @IsString()
@@ -26,4 +26,9 @@ export class CreateMatchDto {
   @Min(2)
   @Max(8)
   maxPlayers!: number;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  startDate?: string;
 }

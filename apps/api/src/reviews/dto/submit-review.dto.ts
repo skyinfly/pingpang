@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsInt, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class SubmitReviewDto {
   @IsString()
@@ -19,4 +19,8 @@ export class SubmitReviewDto {
   @IsString({ each: true })
   @MaxLength(32, { each: true })
   tags!: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  anonymous?: boolean;
 }

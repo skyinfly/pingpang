@@ -12,11 +12,13 @@ import type {
   MyMatchApplicationStatus,
   MessagePreview,
   MessageSummary,
+  PublicUserProfile,
   ReviewProfile,
   SubmitReviewPayload,
   SubmitReviewResponse,
   SessionPayload,
   SessionUser,
+  UpdateProfilePayload,
   ThreadMessagesResponse,
   ThreadReadResponse,
 } from './types';
@@ -59,6 +61,18 @@ export function fetchMyProfile() {
   return http<SessionUser>('/users/me', {
     headers: withAuthHeaders(),
   });
+}
+
+export function updateMyProfile(payload: UpdateProfilePayload) {
+  return http<SessionUser>('/users/me', {
+    method: 'PATCH',
+    data: payload,
+    headers: withAuthHeaders(),
+  });
+}
+
+export function fetchPublicProfile(userId: string) {
+  return http<PublicUserProfile>(`/users/${encodeURIComponent(userId)}`);
 }
 
 export function listMatches(filters: { city?: string; level?: string } = {}) {
@@ -197,10 +211,61 @@ export function submitReview(payload: SubmitReviewPayload) {
   });
 }
 
+export function withdrawReview(reviewId: string) {
+  return http<{ ok: true; id: string }>(`/reviews/${encodeURIComponent(reviewId)}`, {
+    method: 'DELETE',
+    headers: withAuthHeaders(),
+  });
+}
+
+export function ensureMatchCheckInCode(matchId: string) {
+  return http<{ code: string }>(`/matches/${encodeURIComponent(matchId)}/check-in-code`, {
+    method: 'POST',
+    data: {},
+    headers: withAuthHeaders(),
+  });
+}
+
+export function fetchMatchCheckIns(matchId: string) {
+  return http<{
+    items: Array<{
+      userId: string;
+      nickname: string;
+      level: string;
+      creditScore: number;
+      role: string;
+      checkedInAt: string | null;
+    }>;
+  }>(`/matches/${encodeURIComponent(matchId)}/check-ins`, {
+    headers: withAuthHeaders(),
+  });
+}
+
+export function submitMatchCheckIn(matchId: string, code: string) {
+  return http<{ ok: true; checkedInAt: string; alreadyCheckedIn: boolean }>(
+    `/matches/${encodeURIComponent(matchId)}/check-in`,
+    {
+      method: 'POST',
+      data: { code },
+      headers: withAuthHeaders(),
+    },
+  );
+}
+
+export function reportUser(payload: { targetUserId: string; reason: string; matchId?: string }) {
+  return http<{ id: string; status: string; createdAt: string }>('/reports', {
+    method: 'POST',
+    data: payload,
+    headers: withAuthHeaders(),
+  });
+}
+
 export const apiClient = {
   requestLoginCode,
   verifyLoginCode,
   fetchMyProfile,
+  updateMyProfile,
+  fetchPublicProfile,
   listMatches,
   listMyMatches,
   listJoinedMatches,
@@ -222,4 +287,9 @@ export const apiClient = {
   markChatThreadRead,
   fetchReviewProfile,
   submitReview,
+  withdrawReview,
+  ensureMatchCheckInCode,
+  fetchMatchCheckIns,
+  submitMatchCheckIn,
+  reportUser,
 };

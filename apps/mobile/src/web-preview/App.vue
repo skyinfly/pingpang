@@ -9,6 +9,8 @@ import ProfilePage from '../pages/profile/index.vue';
 import LoginPage from '../pages/login/index.vue';
 import CreateMatchPage from '../pages/create-match/index.vue';
 import ChatPage from '../pages/chat/index.vue';
+import UserProfilePage from '../pages/user-profile/index.vue';
+import EditProfilePage from '../pages/edit-profile/index.vue';
 import { getWebPreviewRoute } from './route';
 
 const route = ref(getWebPreviewRoute());
@@ -22,6 +24,8 @@ const views = {
   '/pages/login/index': LoginPage,
   '/pages/create-match/index': CreateMatchPage,
   '/pages/chat/index': ChatPage,
+  '/pages/user-profile/index': UserProfilePage,
+  '/pages/edit-profile/index': EditProfilePage,
 };
 
 const currentView = computed(() => views[route.value.path as keyof typeof views] ?? HomePage);

@@ -262,14 +262,15 @@ describe('CreateMatchPage', () => {
         header: {
           Authorization: 'Bearer dev-token-13800138000',
         },
-        data: {
+        data: expect.objectContaining({
           title: '静安寺白领馆 2号台 · 下班开打约球',
           venueId: 'venue-seed-2',
           courtId: 'venue-court-3',
           slotId: 'venue-slot-4',
           level: 'intermediate',
           maxPlayers: 2,
-        },
+          startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        }),
       }),
     );
 

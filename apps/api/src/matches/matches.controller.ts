@@ -3,6 +3,7 @@ import { MatchesService } from './matches.service';
 import { MatchOptionsService } from './match-options.service';
 import { ApplyMatchDto } from './dto/apply-match.dto';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { CheckInDto } from './dto/check-in.dto';
 import { RejectMatchApplicationDto } from './dto/reject-match-application.dto';
 import { AuthUser } from '../common/auth/auth-user.decorator';
 import { DevBearerGuard } from '../common/auth/dev-bearer.guard';
@@ -95,5 +96,27 @@ export class MatchesController {
     @AuthUser() user: SessionUser,
   ) {
     return this.matchesService.cancelMatch(id, user.id, body?.reason);
+  }
+
+  @Post('matches/:id/check-in-code')
+  @UseGuards(DevBearerGuard)
+  ensureCheckInCode(@Param('id') id: string, @AuthUser() user: SessionUser) {
+    return this.matchesService.ensureCheckInCode(id, user.id);
+  }
+
+  @Get('matches/:id/check-ins')
+  @UseGuards(DevBearerGuard)
+  listCheckIns(@Param('id') id: string, @AuthUser() user: SessionUser) {
+    return this.matchesService.listCheckIns(id, user.id);
+  }
+
+  @Post('matches/:id/check-in')
+  @UseGuards(DevBearerGuard)
+  checkIn(
+    @Param('id') id: string,
+    @Body() body: CheckInDto,
+    @AuthUser() user: SessionUser,
+  ) {
+    return this.matchesService.checkIn(id, user.id, body.code);
   }
 }

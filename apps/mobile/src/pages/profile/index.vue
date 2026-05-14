@@ -85,6 +85,12 @@ function handleLogout() {
     url: '/pages/home/index',
   });
 }
+
+function openEditProfile() {
+  uni.navigateTo({
+    url: '/pages/edit-profile/index',
+  });
+}
 </script>
 
 <template>
@@ -103,7 +109,10 @@ function handleLogout() {
         <text class="eyebrow">信用档案</text>
         <text class="name">{{ profile?.user.nickname ?? '正在加载资料...' }}</text>
         <text class="meta">{{ profileMeta }}</text>
-        <button class="logout-button" data-testid="logout-action" @click="handleLogout">退出登录</button>
+        <view class="hero-actions">
+          <button class="ghost-action" data-testid="edit-profile-entry" @click="openEditProfile">编辑资料</button>
+          <button class="logout-button" data-testid="logout-action" @click="handleLogout">退出登录</button>
+        </view>
       </view>
 
       <view class="score-card">
@@ -262,15 +271,36 @@ function handleLogout() {
   line-height: 1.6;
 }
 
+.hero-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.ghost-action,
+.logout-button {
+  flex: 1;
+  min-height: 78rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.ghost-action {
+  background: rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+}
+
 .logout-button {
   margin-top: 20rpx;
   width: 100%;
-  min-height: 78rpx;
-  border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
-  font-size: 24rpx;
-  font-weight: 700;
+}
+
+.hero-actions .logout-button {
+  margin-top: 0;
+  width: auto;
 }
 
 .score-card {

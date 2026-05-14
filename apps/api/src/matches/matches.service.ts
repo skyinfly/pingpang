@@ -35,6 +35,12 @@ function buildShanghaiSlotDate(slotStartMinutes: number, now = new Date()) {
   return new Date(todayCandidate.getTime() + 24 * 60 * 60 * 1000);
 }
 
+function buildShanghaiDateAtSlot(dateString: string, slotStartMinutes: number) {
+  const hours = String(Math.floor(slotStartMinutes / 60)).padStart(2, '0');
+  const minutes = String(slotStartMinutes % 60).padStart(2, '0');
+  return new Date(`${dateString}T${hours}:${minutes}:00+08:00`);
+}
+
 const REJECTED_APPLICATION_REASON = '这场球局当前席位更适合其他安排，你可以换个时间段继续约。';
 
 @Injectable()
@@ -249,7 +255,13 @@ export class MatchesService {
       }
 
       const matchRate = this.recommendations.estimateMatchRate(venue.distanceKm, hostUser.creditScore);
-      const scheduledStartTime = buildShanghaiSlotDate(slot.startTime);
+      const scheduledStartTime = payload.startDate
+        ? buildShanghaiDateAtSlot(payload.startDate, slot.startTime)
+        : buildShanghaiSlotDate(slot.startTime);
+
+      if (scheduledStartTime.getTime() <= Date.now()) {
+        throw new ConflictException('startDate combined with the chosen slot is in the past');
+      }
 
       const match = await tx.match.create({
         data: {
@@ -564,6 +576,91 @@ export class MatchesService {
       applicantLevel: applicant.level,
       applicantCreditScore: applicant.creditScore,
     };
+  }
+
+  async ensureCheckInCode(matchId: string, hostUserId: string) {
+    const match = await this.requireHostOwnedMatch(matchId, hostUserId);
+
+    if (match.checkInCode) {
+      return { code: match.checkInCode };
+    }
+
+    const code = this.generateCheckInCode();
+    await this.prisma.match.update({
+      where: { id: matchId },
+      data: { checkInCode: code },
+    });
+
+    return { code };
+  }
+
+  async listCheckIns(matchId: string, hostUserId: string) {
+    await this.requireHostOwnedMatch(matchId, hostUserId);
+    const participants = await this.prisma.chatThreadParticipant.findMany({
+      where: { threadId: matchId },
+      include: {
+        user: {
+          select: { id: true, nickname: true, level: true, creditScore: true },
+        },
+      },
+      orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+    });
+
+    return {
+      items: participants.map((participant) => ({
+        userId: participant.userId,
+        nickname: participant.user.nickname,
+        level: participant.user.level,
+        creditScore: participant.user.creditScore,
+        role: participant.role,
+        checkedInAt: participant.checkedInAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  async checkIn(matchId: string, userId: string, code: string) {
+    const match = await this.requireMatch(matchId);
+
+    if (match.status === 'cancelled') {
+      throw new ConflictException(`match ${matchId} has been cancelled`);
+    }
+
+    if (!match.checkInCode || match.checkInCode !== code.trim().toUpperCase()) {
+      throw new ForbiddenException('Invalid check-in code');
+    }
+
+    const membership = await this.prisma.chatThreadParticipant.findUnique({
+      where: { threadId_userId: { threadId: matchId, userId } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException(`User ${userId} is not part of match ${matchId}`);
+    }
+
+    if (membership.checkedInAt) {
+      return {
+        ok: true,
+        checkedInAt: membership.checkedInAt.toISOString(),
+        alreadyCheckedIn: true,
+      };
+    }
+
+    const now = new Date();
+    await this.prisma.chatThreadParticipant.update({
+      where: { threadId_userId: { threadId: matchId, userId } },
+      data: { checkedInAt: now },
+    });
+
+    return { ok: true, checkedInAt: now.toISOString(), alreadyCheckedIn: false };
+  }
+
+  private generateCheckInCode() {
+    const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let result = '';
+    for (let i = 0; i < 6; i += 1) {
+      result += charset[Math.floor(Math.random() * charset.length)];
+    }
+    return result;
   }
 
   async cancelMatch(matchId: string, hostUserId: string, reason?: string) {

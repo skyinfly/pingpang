@@ -1208,6 +1208,7 @@ describe('MatchDetailPage', () => {
       revieweeId: 'user-reviewee-1',
       score: 4,
       tags: ['on_time'],
+      anonymous: false,
     });
   });
 
