@@ -6,3 +6,4 @@ coverage
 .pnpm-store
 *.log
 .local
+apps/api/src/generated/prisma/query_engine-windows.dll.node.tmp*
