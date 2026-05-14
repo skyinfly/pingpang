@@ -24,6 +24,7 @@
     "build:miniapp:api": "node tools/mobile/run-mobile-with-api.mjs --platform mp-weixin --command build",
     "build:api": "pnpm --filter @pingpang/api build",
     "start:api:prod": "pnpm --filter @pingpang/api start:prod",
-    "release:verify": "node tools/release/verify-release.mjs"
+    "release:verify": "node tools/release/verify-release.mjs",
+    "verify": "node tools/verify-stack.mjs"
   }
 }

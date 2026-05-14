@@ -37,6 +37,15 @@ function openLogin() {
   });
 }
 
+function openParticipantProfile(userId: string) {
+  if (!userId) {
+    return;
+  }
+  uni.navigateTo({
+    url: `/pages/user-profile/index?id=${encodeURIComponent(userId)}`,
+  });
+}
+
 function formatSchedule(value?: string | null) {
   if (!value) {
     return '时间确认中';
@@ -164,6 +173,8 @@ async function handleSend() {
             :key="participant.userId"
             class="participant-chip"
             :class="{ 'participant-chip--host': participant.role === 'host' }"
+            :data-testid="`participant-chip-${participant.userId}`"
+            @click="openParticipantProfile(participant.userId)"
           >
             <text class="participant-name">
               {{ participant.nickname }}
@@ -305,6 +316,7 @@ async function handleSend() {
   color: $color-ink;
   font-size: 22rpx;
   font-weight: 700;
+  cursor: pointer;
 }
 
 .participant-chip--host {
