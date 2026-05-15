@@ -15,7 +15,9 @@ enum OptionPresetKind {
 
 model User {
   id               String                  @id @default(cuid())
-  phone            String                  @unique
+  phone            String?                 @unique
+  wechatOpenId     String?                 @unique
+  wechatUnionId    String?                 @unique
   nickname         String
   city             String
   level            String

@@ -1,6 +1,8 @@
 ﻿export type SessionUser = {
   id: string;
-  phone: string;
+  phone: string | null;
+  wechatOpenId?: string | null;
+  wechatUnionId?: string | null;
   nickname: string;
   city: string;
   level: string;

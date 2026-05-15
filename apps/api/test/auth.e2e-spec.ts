@@ -33,6 +33,36 @@ describe('Auth flow', () => {
     await prisma.user.deleteMany();
   });
 
+  it('logs in via WeChat mini-program with the dev mock client', async () => {
+    const code = 'mp-wx-code-001';
+    const first = await request(app.getHttpServer())
+      .post('/auth/wechat-login')
+      .send({ code })
+      .expect(201);
+
+    expect(first.body.token).toEqual(expect.any(String));
+    expect(first.body.user.id).toEqual(expect.any(String));
+    expect(first.body.user.wechatOpenId).toMatch(/^mock_/);
+    expect(first.body.user.phone).toBeNull();
+
+    const second = await request(app.getHttpServer())
+      .post('/auth/wechat-login')
+      .send({ code })
+      .expect(201);
+
+    expect(second.body.user.id).toBe(first.body.user.id);
+
+    await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${first.body.token}`)
+      .expect(200);
+  });
+
+  it('rejects an empty wechat login code', async () => {
+    await request(app.getHttpServer()).post('/auth/wechat-login').send({}).expect(400);
+    await request(app.getHttpServer()).post('/auth/wechat-login').send({ code: '' }).expect(400);
+  });
+
   it('updates the authenticated user nickname and rejects out-of-range values', async () => {
     const phone = '13800138000';
     const verifyResponse = await request(app.getHttpServer())

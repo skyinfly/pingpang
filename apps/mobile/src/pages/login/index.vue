@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { requestLoginCode, verifyLoginCode } from '../../services/api';
+import { loginWithWechat, requestLoginCode, verifyLoginCode } from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 
 const authStore = useAuthStore();
@@ -10,8 +10,19 @@ const hint = ref('');
 const codeSent = ref(false);
 const requesting = ref(false);
 const loading = ref(false);
+const wechatLoading = ref(false);
 const tabPaths = new Set(['/pages/home/index', '/pages/square/index', '/pages/messages/index', '/pages/profile/index']);
 const hasSession = computed(() => Boolean(authStore.token && authStore.user));
+
+// `wx.login` is only available inside the WeChat mini-program runtime;
+// guard so the H5 build does not show a button that cannot work.
+const wechatLoginAvailable = computed(() => {
+  if (typeof uni === 'undefined' || !('login' in uni)) {
+    return false;
+  }
+  const globalWx = (globalThis as { wx?: { login?: unknown } }).wx;
+  return Boolean(globalWx && typeof globalWx.login === 'function');
+});
 
 const phoneValid = computed(() => /^1\d{10}$/.test(phone.value));
 const codeValid = computed(() => /^\d{6}$/.test(code.value));
@@ -105,6 +116,45 @@ function handleLogout() {
   authStore.clearSession();
   hint.value = '当前账号已退出，你可以重新登录。';
 }
+
+function getWechatCode(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    uni.login({
+      provider: 'weixin',
+      success: (res: { code?: string; errMsg?: string }) => {
+        if (res.code) {
+          resolve(res.code);
+          return;
+        }
+        reject(new Error(res.errMsg ?? 'wx.login returned no code'));
+      },
+      fail: (err: { errMsg?: string } = {}) => {
+        reject(new Error(err.errMsg ?? 'wx.login failed'));
+      },
+    });
+  });
+}
+
+async function handleWechatLogin() {
+  if (wechatLoading.value) {
+    return;
+  }
+
+  wechatLoading.value = true;
+  hint.value = '';
+
+  try {
+    const wxCode = await getWechatCode();
+    const session = await loginWithWechat(wxCode);
+    authStore.setSession(session);
+    hint.value = `欢迎，${session.user.nickname}`;
+    continueAfterLogin();
+  } catch (error) {
+    hint.value = `微信登录失败：${error instanceof Error ? error.message : '未知错误'}`;
+  } finally {
+    wechatLoading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -153,6 +203,17 @@ function handleLogout() {
         @click="handleLogin"
       >
         {{ loading ? '登录中...' : '登录并继续' }}
+      </button>
+
+      <view v-if="wechatLoginAvailable" class="wechat-divider"><text>或</text></view>
+      <button
+        v-if="wechatLoginAvailable"
+        class="wechat-button"
+        data-testid="login-wechat"
+        :disabled="wechatLoading"
+        @click="handleWechatLogin"
+      >
+        {{ wechatLoading ? '微信登录中...' : '微信一键登录' }}
       </button>
 
       <text v-if="hint" class="hint">{{ hint }}</text>
@@ -271,5 +332,29 @@ function handleLogout() {
   font-size: 24rpx;
   line-height: 1.5;
   color: $color-muted;
+}
+
+.wechat-divider {
+  display: flex;
+  align-items: center;
+  margin: 28rpx 0 14rpx;
+  color: $color-muted;
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.wechat-divider text {
+  margin: 0 auto;
+  padding: 0 18rpx;
+}
+
+.wechat-button {
+  border-radius: 999rpx;
+  background: #07c160;
+  color: #fff;
+}
+
+.wechat-button[disabled] {
+  opacity: 0.6;
 }
 </style>

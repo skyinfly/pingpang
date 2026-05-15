@@ -19,6 +19,48 @@ export class UsersService {
     });
   }
 
+  async upsertWechatUser(payload: {
+    openId: string;
+    unionId?: string;
+  }): Promise<SessionUser> {
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { wechatOpenId: payload.openId },
+          payload.unionId ? { wechatUnionId: payload.unionId } : { wechatOpenId: payload.openId },
+        ],
+      },
+    });
+
+    if (existing) {
+      // Backfill ids if the row was created by a previous flow that did not
+      // know one of them.
+      if (!existing.wechatOpenId || (payload.unionId && !existing.wechatUnionId)) {
+        return this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            wechatOpenId: existing.wechatOpenId ?? payload.openId,
+            wechatUnionId: existing.wechatUnionId ?? payload.unionId ?? null,
+          },
+        }) as Promise<SessionUser>;
+      }
+      return existing as SessionUser;
+    }
+
+    const placeholder = `wx_${payload.openId.slice(0, 6)}${Math.random().toString(36).slice(2, 6)}`;
+    return this.prisma.user.create({
+      data: {
+        wechatOpenId: payload.openId,
+        wechatUnionId: payload.unionId ?? null,
+        phone: null,
+        nickname: `球友${placeholder}`,
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    }) as Promise<SessionUser>;
+  }
+
   async getPublicProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

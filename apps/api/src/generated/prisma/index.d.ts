@@ -2131,6 +2131,8 @@ export namespace Prisma {
   export type UserMinAggregateOutputType = {
     id: string | null
     phone: string | null
+    wechatOpenId: string | null
+    wechatUnionId: string | null
     nickname: string | null
     city: string | null
     level: string | null
@@ -2141,6 +2143,8 @@ export namespace Prisma {
   export type UserMaxAggregateOutputType = {
     id: string | null
     phone: string | null
+    wechatOpenId: string | null
+    wechatUnionId: string | null
     nickname: string | null
     city: string | null
     level: string | null
@@ -2151,6 +2155,8 @@ export namespace Prisma {
   export type UserCountAggregateOutputType = {
     id: number
     phone: number
+    wechatOpenId: number
+    wechatUnionId: number
     nickname: number
     city: number
     level: number
@@ -2171,6 +2177,8 @@ export namespace Prisma {
   export type UserMinAggregateInputType = {
     id?: true
     phone?: true
+    wechatOpenId?: true
+    wechatUnionId?: true
     nickname?: true
     city?: true
     level?: true
@@ -2181,6 +2189,8 @@ export namespace Prisma {
   export type UserMaxAggregateInputType = {
     id?: true
     phone?: true
+    wechatOpenId?: true
+    wechatUnionId?: true
     nickname?: true
     city?: true
     level?: true
@@ -2191,6 +2201,8 @@ export namespace Prisma {
   export type UserCountAggregateInputType = {
     id?: true
     phone?: true
+    wechatOpenId?: true
+    wechatUnionId?: true
     nickname?: true
     city?: true
     level?: true
@@ -2287,7 +2299,9 @@ export namespace Prisma {
 
   export type UserGroupByOutputType = {
     id: string
-    phone: string
+    phone: string | null
+    wechatOpenId: string | null
+    wechatUnionId: string | null
     nickname: string
     city: string
     level: string
@@ -2317,6 +2331,8 @@ export namespace Prisma {
   export type UserSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     phone?: boolean
+    wechatOpenId?: boolean
+    wechatUnionId?: boolean
     nickname?: boolean
     city?: boolean
     level?: boolean
@@ -2330,6 +2346,8 @@ export namespace Prisma {
   export type UserSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     phone?: boolean
+    wechatOpenId?: boolean
+    wechatUnionId?: boolean
     nickname?: boolean
     city?: boolean
     level?: boolean
@@ -2340,6 +2358,8 @@ export namespace Prisma {
   export type UserSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     phone?: boolean
+    wechatOpenId?: boolean
+    wechatUnionId?: boolean
     nickname?: boolean
     city?: boolean
     level?: boolean
@@ -2350,6 +2370,8 @@ export namespace Prisma {
   export type UserSelectScalar = {
     id?: boolean
     phone?: boolean
+    wechatOpenId?: boolean
+    wechatUnionId?: boolean
     nickname?: boolean
     city?: boolean
     level?: boolean
@@ -2357,7 +2379,7 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "nickname" | "city" | "level" | "creditScore" | "createdAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "wechatOpenId" | "wechatUnionId" | "nickname" | "city" | "level" | "creditScore" | "createdAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     hostedMatches?: boolean | User$hostedMatchesArgs<ExtArgs>
     threadMembership?: boolean | User$threadMembershipArgs<ExtArgs>
@@ -2374,7 +2396,9 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      phone: string
+      phone: string | null
+      wechatOpenId: string | null
+      wechatUnionId: string | null
       nickname: string
       city: string
       level: string
@@ -2807,6 +2831,8 @@ export namespace Prisma {
   interface UserFieldRefs {
     readonly id: FieldRef<"User", 'String'>
     readonly phone: FieldRef<"User", 'String'>
+    readonly wechatOpenId: FieldRef<"User", 'String'>
+    readonly wechatUnionId: FieldRef<"User", 'String'>
     readonly nickname: FieldRef<"User", 'String'>
     readonly city: FieldRef<"User", 'String'>
     readonly level: FieldRef<"User", 'String'>
@@ -15944,6 +15970,8 @@ export namespace Prisma {
   export const UserScalarFieldEnum: {
     id: 'id',
     phone: 'phone',
+    wechatOpenId: 'wechatOpenId',
+    wechatUnionId: 'wechatUnionId',
     nickname: 'nickname',
     city: 'city',
     level: 'level',
@@ -16238,7 +16266,9 @@ export namespace Prisma {
     OR?: UserWhereInput[]
     NOT?: UserWhereInput | UserWhereInput[]
     id?: StringFilter<"User"> | string
-    phone?: StringFilter<"User"> | string
+    phone?: StringNullableFilter<"User"> | string | null
+    wechatOpenId?: StringNullableFilter<"User"> | string | null
+    wechatUnionId?: StringNullableFilter<"User"> | string | null
     nickname?: StringFilter<"User"> | string
     city?: StringFilter<"User"> | string
     level?: StringFilter<"User"> | string
@@ -16250,7 +16280,9 @@ export namespace Prisma {
 
   export type UserOrderByWithRelationInput = {
     id?: SortOrder
-    phone?: SortOrder
+    phone?: SortOrderInput | SortOrder
+    wechatOpenId?: SortOrderInput | SortOrder
+    wechatUnionId?: SortOrderInput | SortOrder
     nickname?: SortOrder
     city?: SortOrder
     level?: SortOrder
@@ -16263,6 +16295,8 @@ export namespace Prisma {
   export type UserWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     phone?: string
+    wechatOpenId?: string
+    wechatUnionId?: string
     AND?: UserWhereInput | UserWhereInput[]
     OR?: UserWhereInput[]
     NOT?: UserWhereInput | UserWhereInput[]
@@ -16273,11 +16307,13 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     hostedMatches?: MatchListRelationFilter
     threadMembership?: ChatThreadParticipantListRelationFilter
-  }, "id" | "phone">
+  }, "id" | "phone" | "wechatOpenId" | "wechatUnionId">
 
   export type UserOrderByWithAggregationInput = {
     id?: SortOrder
-    phone?: SortOrder
+    phone?: SortOrderInput | SortOrder
+    wechatOpenId?: SortOrderInput | SortOrder
+    wechatUnionId?: SortOrderInput | SortOrder
     nickname?: SortOrder
     city?: SortOrder
     level?: SortOrder
@@ -16295,7 +16331,9 @@ export namespace Prisma {
     OR?: UserScalarWhereWithAggregatesInput[]
     NOT?: UserScalarWhereWithAggregatesInput | UserScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"User"> | string
-    phone?: StringWithAggregatesFilter<"User"> | string
+    phone?: StringNullableWithAggregatesFilter<"User"> | string | null
+    wechatOpenId?: StringNullableWithAggregatesFilter<"User"> | string | null
+    wechatUnionId?: StringNullableWithAggregatesFilter<"User"> | string | null
     nickname?: StringWithAggregatesFilter<"User"> | string
     city?: StringWithAggregatesFilter<"User"> | string
     level?: StringWithAggregatesFilter<"User"> | string
@@ -17197,7 +17235,9 @@ export namespace Prisma {
 
   export type UserCreateInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -17209,7 +17249,9 @@ export namespace Prisma {
 
   export type UserUncheckedCreateInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -17221,7 +17263,9 @@ export namespace Prisma {
 
   export type UserUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -17233,7 +17277,9 @@ export namespace Prisma {
 
   export type UserUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -17245,7 +17291,9 @@ export namespace Prisma {
 
   export type UserCreateManyInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -17255,7 +17303,9 @@ export namespace Prisma {
 
   export type UserUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -17265,7 +17315,9 @@ export namespace Prisma {
 
   export type UserUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -18272,6 +18324,21 @@ export namespace Prisma {
     not?: NestedStringFilter<$PrismaModel> | string
   }
 
+  export type StringNullableFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    mode?: QueryMode
+    not?: NestedStringNullableFilter<$PrismaModel> | string | null
+  }
+
   export type IntFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel>
     in?: number[] | ListIntFieldRefInput<$PrismaModel>
@@ -18306,6 +18373,11 @@ export namespace Prisma {
     none?: ChatThreadParticipantWhereInput
   }
 
+  export type SortOrderInput = {
+    sort: SortOrder
+    nulls?: NullsOrder
+  }
+
   export type MatchOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -18317,6 +18389,8 @@ export namespace Prisma {
   export type UserCountOrderByAggregateInput = {
     id?: SortOrder
     phone?: SortOrder
+    wechatOpenId?: SortOrder
+    wechatUnionId?: SortOrder
     nickname?: SortOrder
     city?: SortOrder
     level?: SortOrder
@@ -18331,6 +18405,8 @@ export namespace Prisma {
   export type UserMaxOrderByAggregateInput = {
     id?: SortOrder
     phone?: SortOrder
+    wechatOpenId?: SortOrder
+    wechatUnionId?: SortOrder
     nickname?: SortOrder
     city?: SortOrder
     level?: SortOrder
@@ -18341,6 +18417,8 @@ export namespace Prisma {
   export type UserMinOrderByAggregateInput = {
     id?: SortOrder
     phone?: SortOrder
+    wechatOpenId?: SortOrder
+    wechatUnionId?: SortOrder
     nickname?: SortOrder
     city?: SortOrder
     level?: SortOrder
@@ -18368,6 +18446,24 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedStringFilter<$PrismaModel>
     _max?: NestedStringFilter<$PrismaModel>
+  }
+
+  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    mode?: QueryMode
+    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedStringNullableFilter<$PrismaModel>
+    _max?: NestedStringNullableFilter<$PrismaModel>
   }
 
   export type IntWithAggregatesFilter<$PrismaModel = never> = {
@@ -18400,21 +18496,6 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
-  export type StringNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    mode?: QueryMode
-    not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
   export type FloatFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel>
     in?: number[] | ListFloatFieldRefInput<$PrismaModel>
@@ -18441,11 +18522,6 @@ export namespace Prisma {
     every?: VenueAvailabilitySlotWhereInput
     some?: VenueAvailabilitySlotWhereInput
     none?: VenueAvailabilitySlotWhereInput
-  }
-
-  export type SortOrderInput = {
-    sort: SortOrder
-    nulls?: NullsOrder
   }
 
   export type VenueCourtOrderByRelationAggregateInput = {
@@ -18500,24 +18576,6 @@ export namespace Prisma {
   export type VenueSumOrderByAggregateInput = {
     distanceKm?: SortOrder
     sortOrder?: SortOrder
-  }
-
-  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    mode?: QueryMode
-    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
   }
 
   export type FloatWithAggregatesFilter<$PrismaModel = never> = {
@@ -19127,6 +19185,10 @@ export namespace Prisma {
     set?: string
   }
 
+  export type NullableStringFieldUpdateOperationsInput = {
+    set?: string | null
+  }
+
   export type IntFieldUpdateOperationsInput = {
     set?: number
     increment?: number
@@ -19235,10 +19297,6 @@ export namespace Prisma {
     connectOrCreate?: MatchCreateOrConnectWithoutVenueInput | MatchCreateOrConnectWithoutVenueInput[]
     createMany?: MatchCreateManyVenueInputEnvelope
     connect?: MatchWhereUniqueInput | MatchWhereUniqueInput[]
-  }
-
-  export type NullableStringFieldUpdateOperationsInput = {
-    set?: string | null
   }
 
   export type FloatFieldUpdateOperationsInput = {
@@ -19772,6 +19830,20 @@ export namespace Prisma {
     not?: NestedStringFilter<$PrismaModel> | string
   }
 
+  export type NestedStringNullableFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    not?: NestedStringNullableFilter<$PrismaModel> | string | null
+  }
+
   export type NestedIntFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel>
     in?: number[] | ListIntFieldRefInput<$PrismaModel>
@@ -19809,6 +19881,34 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedStringFilter<$PrismaModel>
     _max?: NestedStringFilter<$PrismaModel>
+  }
+
+  export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedStringNullableFilter<$PrismaModel>
+    _max?: NestedStringNullableFilter<$PrismaModel>
+  }
+
+  export type NestedIntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
@@ -19852,51 +19952,9 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
-  export type NestedStringNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
   export type NestedBoolFilter<$PrismaModel = never> = {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
-  export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type NestedIntNullableFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
@@ -20596,7 +20654,9 @@ export namespace Prisma {
 
   export type UserCreateWithoutHostedMatchesInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -20607,7 +20667,9 @@ export namespace Prisma {
 
   export type UserUncheckedCreateWithoutHostedMatchesInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -20786,7 +20848,9 @@ export namespace Prisma {
 
   export type UserUpdateWithoutHostedMatchesInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -20797,7 +20861,9 @@ export namespace Prisma {
 
   export type UserUncheckedUpdateWithoutHostedMatchesInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -21349,7 +21415,9 @@ export namespace Prisma {
 
   export type UserCreateWithoutThreadMembershipInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -21360,7 +21428,9 @@ export namespace Prisma {
 
   export type UserUncheckedCreateWithoutThreadMembershipInput = {
     id?: string
-    phone: string
+    phone?: string | null
+    wechatOpenId?: string | null
+    wechatUnionId?: string | null
     nickname: string
     city: string
     level: string
@@ -21432,7 +21502,9 @@ export namespace Prisma {
 
   export type UserUpdateWithoutThreadMembershipInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string
@@ -21443,7 +21515,9 @@ export namespace Prisma {
 
   export type UserUncheckedUpdateWithoutThreadMembershipInput = {
     id?: StringFieldUpdateOperationsInput | string
-    phone?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
+    wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
     city?: StringFieldUpdateOperationsInput | string
     level?: StringFieldUpdateOperationsInput | string

@@ -57,6 +57,13 @@ export function verifyLoginCode(phone: string, code: string) {
   });
 }
 
+export function loginWithWechat(code: string) {
+  return http<SessionPayload>('/auth/wechat-login', {
+    method: 'POST',
+    data: { code },
+  });
+}
+
 export function fetchMyProfile() {
   return http<SessionUser>('/users/me', {
     headers: withAuthHeaders(),
@@ -263,6 +270,7 @@ export function reportUser(payload: { targetUserId: string; reason: string; matc
 export const apiClient = {
   requestLoginCode,
   verifyLoginCode,
+  loginWithWechat,
   fetchMyProfile,
   updateMyProfile,
   fetchPublicProfile,

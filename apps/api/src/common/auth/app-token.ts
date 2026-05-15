@@ -5,7 +5,7 @@ import { getAppConfig } from '../env/app-config';
 
 export type SessionTokenPayload = {
   sub: string;
-  phone: string;
+  phone: string | null;
   jti: string;
   iat: number;
   exp: number;
@@ -28,7 +28,7 @@ export function issueSessionToken(user: SessionUser) {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionTokenPayload = {
     sub: user.id,
-    phone: user.phone,
+    phone: user.phone ?? null,
     jti: randomBytes(12).toString('base64url'),
     iat: now,
     exp: now + config.authTokenTtlSeconds,
@@ -65,7 +65,7 @@ export function verifySessionToken(token: string): SessionTokenPayload {
 
   const now = Math.floor(Date.now() / 1000);
 
-  if (!payload.sub || !payload.phone || !payload.exp || payload.exp <= now) {
+  if (!payload.sub || !payload.exp || payload.exp <= now) {
     throw new UnauthorizedException('expired token');
   }
 

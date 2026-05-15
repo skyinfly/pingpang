@@ -120,6 +120,8 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   phone: 'phone',
+  wechatOpenId: 'wechatOpenId',
+  wechatUnionId: 'wechatUnionId',
   nickname: 'nickname',
   city: 'city',
   level: 'level',

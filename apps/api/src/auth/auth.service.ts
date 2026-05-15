@@ -5,6 +5,7 @@ import { issueSessionToken } from '../common/auth/app-token';
 import { OtpStore } from './otp-store';
 import { SMS_PROVIDER_TOKEN } from './sms/sms.module';
 import type { SmsProvider } from './sms/sms-provider';
+import { WechatClient } from './wechat/wechat-client';
 
 @Injectable()
 export class AuthService {
@@ -13,8 +14,21 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly otpStore: OtpStore,
+    private readonly wechatClient: WechatClient,
     @Inject(SMS_PROVIDER_TOKEN) private readonly smsProvider: SmsProvider,
   ) {}
+
+  async loginWithWechat(code: string) {
+    const session = await this.wechatClient.exchangeCode(code);
+    const user = await this.usersService.upsertWechatUser({
+      openId: session.openId,
+      unionId: session.unionId,
+    });
+    return {
+      token: issueSessionToken(user),
+      user,
+    };
+  }
 
   async requestCode(phone: string) {
     const devEnabled = isDevLoginEnabled();

@@ -1093,7 +1093,7 @@ export class AdminService {
       hostUserId: string;
       hostUser: {
         nickname: string;
-        phone: string;
+        phone: string | null;
       };
     },
     counts?: ApplicationCounts,
@@ -1110,7 +1110,7 @@ export class AdminService {
       startTime: match.startTime.toISOString(),
       hostUserId: match.hostUserId,
       hostNickname: match.hostUser.nickname,
-      hostPhone: match.hostUser.phone,
+      hostPhone: match.hostUser.phone ?? '',
       applicationCounts: counts ?? emptyApplicationCounts(),
     };
   }
@@ -1118,7 +1118,7 @@ export class AdminService {
   private mapUser(
     user: {
       id: string;
-      phone: string;
+      phone: string | null;
       nickname: string;
       city: string;
       level: string;
@@ -1132,7 +1132,7 @@ export class AdminService {
   ) {
     return {
       id: user.id,
-      phone: user.phone,
+      phone: user.phone ?? '',
       nickname: user.nickname,
       city: user.city,
       level: user.level,
