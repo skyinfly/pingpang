@@ -1,0 +1,98 @@
+# Production-like local stack. Run from repo root:
+#
+#   docker compose --env-file .env up --build
+#
+# Provides Postgres, Redis, the NestJS API (with prisma migrate deploy on
+# boot), the admin SPA on :8080 and the H5 client on :8081. Use this to
+# rehearse deploys before pushing to a real environment; not intended to
+# replace the dev workflow (`pnpm preview:up`).
+
+x-api-env: &api-env
+  NODE_ENV: production
+  PORT: "3000"
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pingpang
+  REDIS_URL: redis://redis:6379
+  AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-please-rotate-me}
+  AUTH_TOKEN_TTL_SECONDS: ${AUTH_TOKEN_TTL_SECONDS:-604800}
+  ADMIN_TOKEN: ${ADMIN_TOKEN:-please-rotate-me}
+  ALLOW_DEV_LOGIN: "false"
+  SMS_PROVIDER: ${SMS_PROVIDER:-aliyun}
+  ALIYUN_SMS_ACCESS_KEY_ID: ${ALIYUN_SMS_ACCESS_KEY_ID}
+  ALIYUN_SMS_ACCESS_KEY_SECRET: ${ALIYUN_SMS_ACCESS_KEY_SECRET}
+  ALIYUN_SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME}
+  ALIYUN_SMS_TEMPLATE_CODE: ${ALIYUN_SMS_TEMPLATE_CODE}
+  CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-http://localhost:8080,http://localhost:8081}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pingpang
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: *api-env
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/health/ready', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${ADMIN_API_BASE_URL:-http://localhost:3000}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+  mobile-h5:
+    build:
+      context: .
+      dockerfile: apps/mobile/Dockerfile
+      args:
+        VITE_API_BASE_URL_H5: ${MOBILE_API_BASE_URL:-http://localhost:3000}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8081:80"
+
+volumes:
+  postgres-data:
