@@ -10,12 +10,16 @@ import {
   AdminVenueCourt,
   AdminVenueRow,
   AdminVenueSlot,
+  AnalyticsOverview,
+  AnalyticsTimeline,
+  AnalyticsTopHost,
+  AnalyticsTopVenue,
   createAdminApiClient,
   resolveAdminApiBaseUrl,
 } from './services/admin-api';
 import { DEFAULT_ADMIN_TOKEN, getStoredAdminToken, saveAdminToken } from './services/admin-token';
 
-type TabKey = 'applications' | 'matches' | 'users' | 'venues' | 'reviews' | 'reports';
+type TabKey = 'analytics' | 'applications' | 'matches' | 'users' | 'venues' | 'reviews' | 'reports';
 type EditorState = {
   resource: TabKey;
   id?: string;
@@ -40,6 +44,13 @@ const reviews = ref<AdminReviewRow[]>([]);
 const deletingReviewId = ref<string | null>(null);
 const reports = ref<AdminReportRow[]>([]);
 const resolvingReportId = ref<string | null>(null);
+const analyticsOverview = ref<AnalyticsOverview | null>(null);
+const matchTimeline = ref<AnalyticsTimeline | null>(null);
+const userTimeline = ref<AnalyticsTimeline | null>(null);
+const topVenues = ref<AnalyticsTopVenue[]>([]);
+const topHosts = ref<AnalyticsTopHost[]>([]);
+const analyticsLoading = ref(false);
+const analyticsRange = ref(14);
 const matchSearch = ref('');
 const userSearch = ref('');
 const venueSearch = ref('');
@@ -200,6 +211,59 @@ async function approveApplication(applicationId: string) {
   }
 }
 
+async function loadAnalytics(range = analyticsRange.value) {
+  analyticsLoading.value = true;
+  errorMessage.value = '';
+
+  try {
+    const [overview, matches, users, venuesPayload, hostsPayload] = await Promise.all([
+      api.value.getAnalyticsOverview(),
+      api.value.getMatchTimeline(range),
+      api.value.getUserTimeline(range),
+      api.value.getTopVenues(5),
+      api.value.getTopHosts(5),
+    ]);
+    analyticsOverview.value = overview;
+    matchTimeline.value = matches;
+    userTimeline.value = users;
+    topVenues.value = venuesPayload.items;
+    topHosts.value = hostsPayload.items;
+    analyticsRange.value = range;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '看板数据加载失败';
+  } finally {
+    analyticsLoading.value = false;
+  }
+}
+
+function changeAnalyticsRange(range: number) {
+  void loadAnalytics(range);
+}
+
+function timelineMax(timeline: AnalyticsTimeline | null) {
+  if (!timeline) return 0;
+  return timeline.buckets.reduce((max, bucket) => Math.max(max, bucket.count), 0);
+}
+
+function timelineSum(timeline: AnalyticsTimeline | null) {
+  if (!timeline) return 0;
+  return timeline.buckets.reduce((sum, bucket) => sum + bucket.count, 0);
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatDelta(value: number) {
+  if (value === 0) return '持平';
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function shortDate(value: string) {
+  const [, month, day] = value.split('-');
+  return `${Number(month)}/${Number(day)}`;
+}
+
 async function resolveReport(reportId: string, status: 'reviewed' | 'dismissed') {
   resolvingReportId.value = reportId;
   errorMessage.value = '';
@@ -285,6 +349,10 @@ function switchTab(tab: TabKey) {
   expandedVenueId.value = null;
   courtEditor.value = null;
   slotEditor.value = null;
+
+  if (tab === 'analytics' && !analyticsOverview.value) {
+    void loadAnalytics();
+  }
 }
 
 function openCreate(resource: TabKey) {
@@ -658,6 +726,14 @@ onMounted(() => {
         <div class="panel-toolbar">
           <div class="tabs" role="tablist" aria-label="后台数据表">
             <button
+              data-testid="tab-analytics"
+              :class="{ active: activeTab === 'analytics' }"
+              type="button"
+              @click="switchTab('analytics')"
+            >
+              数据看板
+            </button>
+            <button
               data-testid="tab-applications"
               :class="{ active: activeTab === 'applications' }"
               type="button"
@@ -816,6 +892,151 @@ onMounted(() => {
             {{ savingEditor ? '保存中' : '保存' }}
           </button>
         </form>
+
+        <div v-if="activeTab === 'analytics'" class="analytics-wrap">
+          <view class="analytics-toolbar">
+            <span class="analytics-toolbar-label">时间窗口</span>
+            <button
+              v-for="range in [7, 14, 30, 60]"
+              :key="range"
+              type="button"
+              class="analytics-range-btn"
+              :class="{ active: analyticsRange === range }"
+              @click="changeAnalyticsRange(range)"
+            >
+              近 {{ range }} 天
+            </button>
+            <span v-if="analyticsLoading" class="analytics-loading">加载中...</span>
+          </view>
+
+          <div v-if="analyticsOverview" class="analytics-grid">
+            <article class="analytics-card analytics-card--span2">
+              <h3>核心指标</h3>
+              <div class="kpi-row">
+                <div class="kpi">
+                  <span>用户总数</span>
+                  <strong>{{ analyticsOverview.totals.users }}</strong>
+                  <small>{{ analyticsOverview.growth.newUsers30d }} 近 30 天新增</small>
+                </div>
+                <div class="kpi">
+                  <span>球局总数</span>
+                  <strong>{{ analyticsOverview.totals.matches }}</strong>
+                  <small>{{ analyticsOverview.growth.newMatches30d }} 近 30 天新增</small>
+                </div>
+                <div class="kpi">
+                  <span>累计报名</span>
+                  <strong>{{ analyticsOverview.totals.applications }}</strong>
+                  <small>{{ formatPercent(analyticsOverview.operations.approvalRate) }} 通过率</small>
+                </div>
+                <div class="kpi">
+                  <span>累计评价</span>
+                  <strong>{{ analyticsOverview.totals.reviews }}</strong>
+                  <small>{{ analyticsOverview.operations.averageReviewScore.toFixed(2) }} 均分</small>
+                </div>
+                <div class="kpi">
+                  <span>举报队列</span>
+                  <strong>{{ analyticsOverview.totals.openReports }}</strong>
+                  <small>累计 {{ analyticsOverview.totals.reports }} 条</small>
+                </div>
+                <div class="kpi">
+                  <span>平均信用</span>
+                  <strong>{{ analyticsOverview.operations.averageCreditScore.toFixed(1) }}</strong>
+                  <small>越高越好</small>
+                </div>
+              </div>
+            </article>
+
+            <article class="analytics-card">
+              <h3>7 天新球局</h3>
+              <p class="trend">
+                <strong>{{ analyticsOverview.growth.newMatches7d }}</strong>
+                <em :class="{ up: analyticsOverview.growth.newMatchesDelta > 0, down: analyticsOverview.growth.newMatchesDelta < 0 }">
+                  比上 7 天 {{ formatDelta(analyticsOverview.growth.newMatchesDelta) }}
+                </em>
+              </p>
+              <small>30 天内 {{ analyticsOverview.growth.cancelledMatches30d }} 局被取消</small>
+            </article>
+
+            <article class="analytics-card">
+              <h3>7 天新球友</h3>
+              <p class="trend">
+                <strong>{{ analyticsOverview.growth.newUsers7d }}</strong>
+                <em :class="{ up: analyticsOverview.growth.newUsersDelta > 0, down: analyticsOverview.growth.newUsersDelta < 0 }">
+                  比上 7 天 {{ formatDelta(analyticsOverview.growth.newUsersDelta) }}
+                </em>
+              </p>
+              <small>30 天内新增 {{ analyticsOverview.growth.newUsers30d }} 球友</small>
+            </article>
+
+            <article class="analytics-card analytics-card--span2">
+              <h3>球局趋势（近 {{ matchTimeline?.days ?? 0 }} 天，共 {{ timelineSum(matchTimeline) }} 局）</h3>
+              <div v-if="matchTimeline" class="chart-bars">
+                <div
+                  v-for="bucket in matchTimeline.buckets"
+                  :key="bucket.date"
+                  class="chart-bar"
+                  :title="`${bucket.date}: ${bucket.count}`"
+                >
+                  <div
+                    class="chart-bar-fill"
+                    :style="`height: ${timelineMax(matchTimeline) ? (bucket.count / timelineMax(matchTimeline)) * 100 : 0}%`"
+                  ></div>
+                  <span class="chart-bar-label">{{ shortDate(bucket.date) }}</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="analytics-card analytics-card--span2">
+              <h3>球友新增趋势（近 {{ userTimeline?.days ?? 0 }} 天，共 {{ timelineSum(userTimeline) }} 人）</h3>
+              <div v-if="userTimeline" class="chart-bars chart-bars--users">
+                <div
+                  v-for="bucket in userTimeline.buckets"
+                  :key="bucket.date"
+                  class="chart-bar"
+                  :title="`${bucket.date}: ${bucket.count}`"
+                >
+                  <div
+                    class="chart-bar-fill chart-bar-fill--users"
+                    :style="`height: ${timelineMax(userTimeline) ? (bucket.count / timelineMax(userTimeline)) * 100 : 0}%`"
+                  ></div>
+                  <span class="chart-bar-label">{{ shortDate(bucket.date) }}</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="analytics-card">
+              <h3>热门球馆 Top 5</h3>
+              <ol class="rank-list">
+                <li v-for="(venue, index) in topVenues" :key="venue.venueId">
+                  <span class="rank-index">{{ index + 1 }}</span>
+                  <span class="rank-body">
+                    <strong>{{ venue.venueName }}</strong>
+                    <small v-if="venue.district">{{ venue.district }}</small>
+                  </span>
+                  <span class="rank-value">{{ venue.matchCount }} 局</span>
+                </li>
+                <li v-if="!topVenues.length" class="rank-empty">暂无数据</li>
+              </ol>
+            </article>
+
+            <article class="analytics-card">
+              <h3>活跃主理人 Top 5</h3>
+              <ol class="rank-list">
+                <li v-for="(host, index) in topHosts" :key="host.hostUserId">
+                  <span class="rank-index">{{ index + 1 }}</span>
+                  <span class="rank-body">
+                    <strong>{{ host.hostNickname }}</strong>
+                    <small>信用 {{ host.creditScore }} · {{ host.hostPhone || '—' }}</small>
+                  </span>
+                  <span class="rank-value">{{ host.hostedMatches }} 局</span>
+                </li>
+                <li v-if="!topHosts.length" class="rank-empty">暂无数据</li>
+              </ol>
+            </article>
+          </div>
+
+          <div v-else-if="!analyticsLoading" class="empty-row">看板数据未加载，切换到该 tab 时会自动拉取。</div>
+        </div>
 
         <div v-if="activeTab === 'applications'" class="table-wrap">
           <table>
@@ -1672,5 +1893,221 @@ td small {
   color: #67736c;
   font-size: 12px;
   font-weight: 800;
+}
+
+.analytics-wrap {
+  padding: 20px;
+}
+
+.analytics-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.analytics-toolbar-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #45554c;
+}
+
+.analytics-range-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 59, 42, 0.18);
+  background: transparent;
+  color: #183b2a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.analytics-range-btn.active {
+  background: #183b2a;
+  color: white;
+  border-color: #183b2a;
+}
+
+.analytics-loading {
+  margin-left: auto;
+  color: #67736c;
+  font-size: 13px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.analytics-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(29, 52, 39, 0.1);
+  box-shadow: 0 14px 36px rgba(48, 62, 53, 0.08);
+}
+
+.analytics-card--span2 {
+  grid-column: span 2;
+}
+
+.analytics-card h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  color: #17201a;
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(15, 28, 46, 0.04);
+}
+
+.kpi span {
+  color: #67736c;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.kpi strong {
+  font-size: 28px;
+  color: #17201a;
+}
+
+.kpi small {
+  color: #67736c;
+  font-size: 12px;
+}
+
+.trend {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+
+.trend strong {
+  font-size: 32px;
+  color: #17201a;
+}
+
+.trend em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: #67736c;
+}
+
+.trend em.up {
+  color: #16864e;
+}
+
+.trend em.down {
+  color: #8e2e22;
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 160px;
+  padding-top: 12px;
+  border-bottom: 1px dashed rgba(29, 52, 39, 0.12);
+}
+
+.chart-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+
+.chart-bar-fill {
+  width: 70%;
+  min-height: 2px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #ff8f57 0%, #ff6a3d 100%);
+}
+
+.chart-bar-fill--users {
+  background: linear-gradient(180deg, #4f86ff 0%, #2d62de 100%);
+}
+
+.chart-bar-label {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #67736c;
+  white-space: nowrap;
+}
+
+.rank-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.rank-list li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #fffdf7;
+}
+
+.rank-list li.rank-empty {
+  display: block;
+  text-align: center;
+  color: #67736c;
+}
+
+.rank-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(24, 59, 42, 0.1);
+  font-size: 12px;
+  font-weight: 800;
+  color: #183b2a;
+}
+
+.rank-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-body strong {
+  font-size: 14px;
+}
+
+.rank-body small {
+  color: #67736c;
+  font-size: 12px;
+}
+
+.rank-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #183b2a;
 }
 </style>

@@ -101,6 +101,51 @@ export type AdminUserPayload = {
 
 export type AdminCreateUserPayload = Required<AdminUserPayload>;
 
+export type AnalyticsOverview = {
+  totals: {
+    users: number;
+    matches: number;
+    applications: number;
+    reviews: number;
+    reports: number;
+    openReports: number;
+  };
+  growth: {
+    newUsers7d: number;
+    newUsers30d: number;
+    newUsersDelta: number;
+    newMatches7d: number;
+    newMatches30d: number;
+    newMatchesDelta: number;
+    cancelledMatches30d: number;
+  };
+  operations: {
+    approvalRate: number;
+    approvedApplications: number;
+    rejectedApplications: number;
+    averageReviewScore: number;
+    averageCreditScore: number;
+  };
+};
+
+export type AnalyticsBucket = { date: string; count: number };
+export type AnalyticsTimeline = { days: number; buckets: AnalyticsBucket[] };
+
+export type AnalyticsTopVenue = {
+  venueId: string;
+  venueName: string;
+  district: string | null;
+  matchCount: number;
+};
+
+export type AnalyticsTopHost = {
+  hostUserId: string;
+  hostNickname: string;
+  hostPhone: string;
+  creditScore: number;
+  hostedMatches: number;
+};
+
 export type AdminReportRow = {
   id: string;
   reporterId: string;
@@ -276,6 +321,11 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
     },
     resolveReport: (reportId: string, status: 'reviewed' | 'dismissed') =>
       send<{ ok: true; id: string; status: string }>('POST', `/admin/reports/${reportId}/resolve`, { status }),
+    getAnalyticsOverview: () => get<AnalyticsOverview>('/admin/analytics/overview'),
+    getMatchTimeline: (days = 14) => get<AnalyticsTimeline>(`/admin/analytics/match-timeline?days=${days}`),
+    getUserTimeline: (days = 14) => get<AnalyticsTimeline>(`/admin/analytics/user-timeline?days=${days}`),
+    getTopVenues: (limit = 5) => get<{ items: AnalyticsTopVenue[] }>(`/admin/analytics/top-venues?limit=${limit}`),
+    getTopHosts: (limit = 5) => get<{ items: AnalyticsTopHost[] }>(`/admin/analytics/top-hosts?limit=${limit}`),
   };
 
   async function removeReturning<T>(path: string) {

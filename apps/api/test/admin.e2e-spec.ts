@@ -410,6 +410,88 @@ describe('Admin API', () => {
     expect(await prisma.chatThread.findUnique({ where: { id: createResponse.body.id } })).toBeNull();
   });
 
+  it('returns analytics overview with totals, growth and operations buckets', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/admin/analytics/overview')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+
+    expect(response.body.totals).toMatchObject({
+      users: expect.any(Number),
+      matches: expect.any(Number),
+      applications: expect.any(Number),
+      reviews: expect.any(Number),
+      reports: expect.any(Number),
+      openReports: expect.any(Number),
+    });
+    expect(response.body.growth).toMatchObject({
+      newUsers7d: expect.any(Number),
+      newUsersDelta: expect.any(Number),
+      newMatches7d: expect.any(Number),
+      newMatchesDelta: expect.any(Number),
+      cancelledMatches30d: expect.any(Number),
+    });
+    expect(response.body.operations).toMatchObject({
+      approvalRate: expect.any(Number),
+      approvedApplications: expect.any(Number),
+      rejectedApplications: expect.any(Number),
+      averageReviewScore: expect.any(Number),
+      averageCreditScore: expect.any(Number),
+    });
+  });
+
+  it('returns a match timeline with the requested number of days', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/admin/analytics/match-timeline?days=7')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+
+    expect(response.body.days).toBe(7);
+    expect(response.body.buckets).toHaveLength(7);
+    expect(response.body.buckets[0]).toMatchObject({
+      date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      count: expect.any(Number),
+    });
+  });
+
+  it('clamps timeline day requests to the [1, 90] range', async () => {
+    const tooMany = await request(app.getHttpServer())
+      .get('/admin/analytics/match-timeline?days=500')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(tooMany.body.days).toBe(90);
+
+    const tooFew = await request(app.getHttpServer())
+      .get('/admin/analytics/user-timeline?days=0')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(tooFew.body.days).toBe(1);
+  });
+
+  it('returns top venues and top hosts sorted by match count', async () => {
+    const venues = await request(app.getHttpServer())
+      .get('/admin/analytics/top-venues?limit=5')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(venues.body.items.length).toBeGreaterThan(0);
+    expect(venues.body.items[0]).toMatchObject({
+      venueId: expect.any(String),
+      venueName: expect.any(String),
+      matchCount: expect.any(Number),
+    });
+
+    const hosts = await request(app.getHttpServer())
+      .get('/admin/analytics/top-hosts?limit=5')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(hosts.body.items.length).toBeGreaterThan(0);
+    expect(hosts.body.items[0]).toMatchObject({
+      hostUserId: expect.any(String),
+      hostNickname: expect.any(String),
+      hostedMatches: expect.any(Number),
+    });
+  });
+
   it('lists pending applications with applicant and host context', async () => {
     const applicantToken = await loginAs('13800138000');
     await request(app.getHttpServer())

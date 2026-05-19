@@ -1,15 +1,44 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminTokenGuard } from './admin-token.guard';
 
 @Controller('admin')
 @UseGuards(AdminTokenGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly analyticsService: AdminAnalyticsService,
+  ) {}
 
   @Get('summary')
   getSummary() {
     return this.adminService.getSummary();
+  }
+
+  @Get('analytics/overview')
+  getAnalyticsOverview() {
+    return this.analyticsService.getOverview();
+  }
+
+  @Get('analytics/match-timeline')
+  getMatchTimeline(@Query('days') days?: string) {
+    return this.analyticsService.getMatchTimeline(days ? Number(days) : undefined);
+  }
+
+  @Get('analytics/user-timeline')
+  getUserTimeline(@Query('days') days?: string) {
+    return this.analyticsService.getUserTimeline(days ? Number(days) : undefined);
+  }
+
+  @Get('analytics/top-venues')
+  getTopVenues(@Query('limit') limit?: string) {
+    return this.analyticsService.getTopVenues(limit ? Number(limit) : undefined);
+  }
+
+  @Get('analytics/top-hosts')
+  getTopHosts(@Query('limit') limit?: string) {
+    return this.analyticsService.getTopHosts(limit ? Number(limit) : undefined);
   }
 
   @Get('matches')
