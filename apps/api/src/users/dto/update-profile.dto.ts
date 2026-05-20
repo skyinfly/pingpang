@@ -17,4 +17,9 @@ export class UpdateProfileDto {
   @IsString()
   @IsIn(['beginner', 'intermediate', 'advanced'])
   level?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  avatarUrl?: string;
 }

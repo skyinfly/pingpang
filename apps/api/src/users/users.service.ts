@@ -91,8 +91,11 @@ export class UsersService {
     };
   }
 
-  async updateOwnProfile(userId: string, payload: { nickname?: string; city?: string; level?: string }) {
-    const data: { nickname?: string; city?: string; level?: string } = {};
+  async updateOwnProfile(
+    userId: string,
+    payload: { nickname?: string; city?: string; level?: string; avatarUrl?: string | null },
+  ) {
+    const data: { nickname?: string; city?: string; level?: string; avatarUrl?: string | null } = {};
 
     if (payload.nickname !== undefined) {
       data.nickname = payload.nickname.trim();
@@ -104,6 +107,11 @@ export class UsersService {
 
     if (payload.level !== undefined) {
       data.level = payload.level;
+    }
+
+    if (payload.avatarUrl !== undefined) {
+      const trimmed = typeof payload.avatarUrl === 'string' ? payload.avatarUrl.trim() : '';
+      data.avatarUrl = trimmed.length > 0 ? trimmed : null;
     }
 
     if (Object.keys(data).length === 0) {

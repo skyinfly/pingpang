@@ -14,6 +14,7 @@ import { MessagesModule } from './messages/messages.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
@@ -74,6 +75,7 @@ const isTest = process.env.NODE_ENV === 'test';
     ReviewsModule,
     ReportsModule,
     AdminModule,
+    UploadsModule,
   ],
   controllers: [HealthController],
   providers: [

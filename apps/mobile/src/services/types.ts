@@ -4,6 +4,7 @@
   nickname: string;
   city: string;
   level: string;
+  avatarUrl?: string | null;
   creditScore: number;
 };
 
@@ -41,6 +42,7 @@ export type MatchCard = {
   maxPlayers: number;
   openSlots: number;
   status?: 'open' | 'cancelled';
+  coverUrl?: string | null;
   hostCreditScore: number;
   level: string;
   matchRate: number;
@@ -60,6 +62,14 @@ export type CreateMatchPayload = {
   level: string;
   maxPlayers: number;
   startDate?: string;
+  coverUrl?: string;
+};
+
+export type UploadKind = 'avatar' | 'match-cover';
+
+export type UploadResponse = {
+  key: string;
+  url: string;
 };
 
 export type MatchOptionVenue = {

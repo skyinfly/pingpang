@@ -129,6 +129,7 @@ exports.Prisma.UserScalarFieldEnum = {
   nickname: 'nickname',
   city: 'city',
   level: 'level',
+  avatarUrl: 'avatarUrl',
   creditScore: 'creditScore',
   createdAt: 'createdAt'
 };
@@ -192,6 +193,7 @@ exports.Prisma.MatchScalarFieldEnum = {
   openSlots: 'openSlots',
   status: 'status',
   checkInCode: 'checkInCode',
+  coverUrl: 'coverUrl',
   hostUserId: 'hostUserId',
   hostCreditScore: 'hostCreditScore',
   distanceKm: 'distanceKm',

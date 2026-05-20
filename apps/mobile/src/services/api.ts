@@ -64,6 +64,38 @@ export function loginWithWechat(code: string) {
   });
 }
 
+import { resolveApiBaseUrl } from './http';
+import type { UploadKind, UploadResponse } from './types';
+
+export function uploadFile(kind: UploadKind, filePath: string): Promise<UploadResponse> {
+  const authStore = useAuthStore();
+  const baseUrl = resolveApiBaseUrl();
+
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: `${baseUrl}/uploads/${kind}`,
+      filePath,
+      name: 'file',
+      header: authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {},
+      success: (res) => {
+        try {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            const parsed = JSON.parse(res.data) as UploadResponse;
+            resolve(parsed);
+            return;
+          }
+          reject(new Error(`upload failed: ${res.statusCode}`));
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('upload response parse failed'));
+        }
+      },
+      fail: (err: { errMsg?: string } = {}) => {
+        reject(new Error(err.errMsg ?? 'upload failed'));
+      },
+    });
+  });
+}
+
 export function fetchMyProfile() {
   return http<SessionUser>('/users/me', {
     headers: withAuthHeaders(),
@@ -272,6 +304,8 @@ export const apiClient = {
   verifyLoginCode,
   loginWithWechat,
   fetchMyProfile,
+  updateMyProfile,
+  uploadFile,
   updateMyProfile,
   fetchPublicProfile,
   listMatches,

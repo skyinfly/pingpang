@@ -31,4 +31,9 @@ export class CreateMatchDto {
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  coverUrl?: string;
 }

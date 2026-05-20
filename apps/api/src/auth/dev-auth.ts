@@ -6,6 +6,7 @@
   nickname: string;
   city: string;
   level: string;
+  avatarUrl?: string | null;
   creditScore: number;
 };
 

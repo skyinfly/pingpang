@@ -21,6 +21,7 @@ model User {
   nickname         String
   city             String
   level            String
+  avatarUrl        String?
   creditScore      Int                     @default(100)
   createdAt        DateTime                @default(now())
   hostedMatches    Match[]                 @relation("HostedMatches")
@@ -101,6 +102,7 @@ model Match {
   openSlots       Int
   status          String             @default("open")
   checkInCode     String?
+  coverUrl        String?
   hostUserId      String
   hostCreditScore Int
   distanceKm      Float

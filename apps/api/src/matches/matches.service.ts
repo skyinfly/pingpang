@@ -279,6 +279,7 @@ export class MatchesService {
           hostCreditScore: hostUser.creditScore,
           distanceKm: venue.distanceKm,
           matchRate,
+          coverUrl: payload.coverUrl?.trim() || null,
         },
       });
 
