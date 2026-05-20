@@ -299,11 +299,25 @@ export class AdminService {
     };
   }
 
-  async listMatches(pagination: { page?: number; pageSize?: number } = {}) {
-    const { take, skip, page, pageSize } = normalizePagination(pagination);
+  async listMatches(filters: { page?: number; pageSize?: number; search?: string } = {}) {
+    const { take, skip, page, pageSize } = normalizePagination(filters);
+    const search = filters.search?.trim();
+    const where: Prisma.MatchWhereInput = search
+      ? {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { venueName: { contains: search, mode: 'insensitive' } },
+            { city: { contains: search, mode: 'insensitive' } },
+            { level: { contains: search, mode: 'insensitive' } },
+            { hostUser: { nickname: { contains: search, mode: 'insensitive' } } },
+            { hostUser: { phone: { contains: search } } },
+          ],
+        }
+      : {};
 
     const [matches, total] = await Promise.all([
       this.prisma.match.findMany({
+        where,
         include: {
           hostUser: {
             select: {
@@ -318,7 +332,7 @@ export class AdminService {
         take,
         skip,
       }),
-      this.prisma.match.count(),
+      this.prisma.match.count({ where }),
     ]);
 
     const matchIds = matches.map((match) => match.id);
@@ -338,11 +352,23 @@ export class AdminService {
     };
   }
 
-  async listUsers(pagination: { page?: number; pageSize?: number } = {}) {
-    const { take, skip, page, pageSize } = normalizePagination(pagination);
+  async listUsers(filters: { page?: number; pageSize?: number; search?: string } = {}) {
+    const { take, skip, page, pageSize } = normalizePagination(filters);
+    const search = filters.search?.trim();
+    const where: Prisma.UserWhereInput = search
+      ? {
+          OR: [
+            { nickname: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search } },
+            { city: { contains: search, mode: 'insensitive' } },
+            { level: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
     const [users, joinedCounts, total] = await Promise.all([
       this.prisma.user.findMany({
+        where,
         include: {
           _count: {
             select: {
@@ -365,7 +391,7 @@ export class AdminService {
           _all: true,
         },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
     const joinedCountMap = new Map(joinedCounts.map((item) => [item.userId, item._count._all]));
 
@@ -377,17 +403,28 @@ export class AdminService {
     };
   }
 
-  async listVenues(pagination: { page?: number; pageSize?: number } = {}) {
-    const { take, skip, page, pageSize } = normalizePagination(pagination);
+  async listVenues(filters: { page?: number; pageSize?: number; search?: string } = {}) {
+    const { take, skip, page, pageSize } = normalizePagination(filters);
+    const search = filters.search?.trim();
+    const where: Prisma.VenueWhereInput = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { city: { contains: search, mode: 'insensitive' } },
+            { district: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
     const [venues, total] = await Promise.all([
       this.prisma.venue.findMany({
+        where,
         include: this.venueDetailInclude(),
         orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }],
         take,
         skip,
       }),
-      this.prisma.venue.count(),
+      this.prisma.venue.count({ where }),
     ]);
 
     return {

@@ -54,56 +54,72 @@ const analyticsRange = ref(14);
 const matchSearch = ref('');
 const userSearch = ref('');
 const venueSearch = ref('');
+const matchTotal = ref(0);
+const userTotal = ref(0);
+const venueTotal = ref(0);
+const matchListLoading = ref(false);
+const userListLoading = ref(false);
+const venueListLoading = ref(false);
 
-function normalize(value: string | null | undefined) {
-  return (value ?? '').toLowerCase().trim();
+function debouncedReload(
+  ref: { value: ReturnType<typeof setTimeout> | null },
+  action: () => Promise<void>,
+  delay = 300,
+) {
+  if (ref.value) {
+    clearTimeout(ref.value);
+  }
+  ref.value = setTimeout(() => {
+    void action();
+  }, delay);
 }
 
-const filteredMatches = computed(() => {
-  const query = normalize(matchSearch.value);
-  if (!query) {
-    return matches.value;
-  }
-  return matches.value.filter((match) => {
-    return (
-      normalize(match.title).includes(query) ||
-      normalize(match.venueName).includes(query) ||
-      normalize(match.hostNickname).includes(query) ||
-      normalize(match.hostPhone).includes(query) ||
-      normalize(match.city).includes(query) ||
-      normalize(match.level).includes(query)
-    );
-  });
-});
+const matchSearchTimer: { value: ReturnType<typeof setTimeout> | null } = { value: null };
+const userSearchTimer: { value: ReturnType<typeof setTimeout> | null } = { value: null };
+const venueSearchTimer: { value: ReturnType<typeof setTimeout> | null } = { value: null };
 
-const filteredUsers = computed(() => {
-  const query = normalize(userSearch.value);
-  if (!query) {
-    return users.value;
+async function reloadMatches(search = matchSearch.value) {
+  matchListLoading.value = true;
+  try {
+    const response = await api.value.listMatches(search.trim());
+    matches.value = response.items;
+    matchTotal.value = response.total;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '球局列表加载失败';
+  } finally {
+    matchListLoading.value = false;
   }
-  return users.value.filter((user) => {
-    return (
-      normalize(user.nickname).includes(query) ||
-      normalize(user.phone).includes(query) ||
-      normalize(user.city).includes(query) ||
-      normalize(user.level).includes(query)
-    );
-  });
-});
+}
 
-const filteredVenues = computed(() => {
-  const query = normalize(venueSearch.value);
-  if (!query) {
-    return venues.value;
+async function reloadUsers(search = userSearch.value) {
+  userListLoading.value = true;
+  try {
+    const response = await api.value.listUsers(search.trim());
+    users.value = response.items;
+    userTotal.value = response.total;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '用户列表加载失败';
+  } finally {
+    userListLoading.value = false;
   }
-  return venues.value.filter((venue) => {
-    return (
-      normalize(venue.name).includes(query) ||
-      normalize(venue.city).includes(query) ||
-      normalize(venue.district).includes(query)
-    );
-  });
-});
+}
+
+async function reloadVenues(search = venueSearch.value) {
+  venueListLoading.value = true;
+  try {
+    const response = await api.value.listVenues(search.trim());
+    venues.value = response.items;
+    venueTotal.value = response.total;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '球馆列表加载失败';
+  } finally {
+    venueListLoading.value = false;
+  }
+}
+
+watch(matchSearch, () => debouncedReload(matchSearchTimer, () => reloadMatches()));
+watch(userSearch, () => debouncedReload(userSearchTimer, () => reloadUsers()));
+watch(venueSearch, () => debouncedReload(venueSearchTimer, () => reloadVenues()));
 const editor = ref<EditorState | null>(null);
 const form = ref<Record<string, string | number | boolean>>({});
 const expandedVenueId = ref<string | null>(null);
@@ -183,8 +199,11 @@ async function loadDashboard() {
 
     summary.value = summaryPayload;
     matches.value = matchPayload.items;
+    matchTotal.value = matchPayload.total;
     users.value = userPayload.items;
+    userTotal.value = userPayload.total;
     venues.value = venuePayload.items;
+    venueTotal.value = venuePayload.total;
     applications.value = applicationPayload.items;
     reviews.value = reviewPayload.items;
     reports.value = reportPayload.items;
@@ -1102,7 +1121,9 @@ onMounted(() => {
             data-testid="match-search"
             placeholder="搜索标题 / 球馆 / 主理人手机号..."
           />
-          <span class="search-count">{{ filteredMatches.length }} / {{ matches.length }}</span>
+          <span class="search-count">
+            {{ matchListLoading ? '搜索中...' : `${matches.length} / ${matchTotal}` }}
+          </span>
         </div>
 
         <div v-if="activeTab === 'matches'" class="table-wrap">
@@ -1119,7 +1140,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="match in filteredMatches" :key="match.id">
+              <tr v-for="match in matches" :key="match.id">
                 <td>
                   <strong>{{ match.title }}</strong>
                   <small>{{ match.city }} / {{ match.level }}</small>
@@ -1160,7 +1181,9 @@ onMounted(() => {
             data-testid="user-search"
             placeholder="搜索昵称 / 手机号 / 城市..."
           />
-          <span class="search-count">{{ filteredUsers.length }} / {{ users.length }}</span>
+          <span class="search-count">
+            {{ userListLoading ? '搜索中...' : `${users.length} / ${userTotal}` }}
+          </span>
         </div>
 
         <div v-if="activeTab === 'users'" class="table-wrap">
@@ -1177,7 +1200,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in filteredUsers" :key="user.id">
+              <tr v-for="user in users" :key="user.id">
                 <td>
                   <strong>{{ user.nickname }}</strong>
                   <small>{{ user.phone }}</small>
@@ -1203,7 +1226,9 @@ onMounted(() => {
             data-testid="venue-search"
             placeholder="搜索球馆名 / 区域..."
           />
-          <span class="search-count">{{ filteredVenues.length }} / {{ venues.length }}</span>
+          <span class="search-count">
+            {{ venueListLoading ? '搜索中...' : `${venues.length} / ${venueTotal}` }}
+          </span>
         </div>
 
         <div v-if="activeTab === 'venues'" class="table-wrap">
@@ -1220,7 +1245,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <template v-for="venue in filteredVenues" :key="venue.id">
+              <template v-for="venue in venues" :key="venue.id">
                 <tr>
                   <td>
                     <strong>{{ venue.name }}</strong>

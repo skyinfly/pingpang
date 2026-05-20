@@ -410,6 +410,66 @@ describe('Admin API', () => {
     expect(await prisma.chatThread.findUnique({ where: { id: createResponse.body.id } })).toBeNull();
   });
 
+  it('filters admin matches by search query against title, venue and host', async () => {
+    const all = await request(app.getHttpServer())
+      .get('/admin/matches')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(all.body.items.length).toBeGreaterThanOrEqual(2);
+
+    const byTitle = await request(app.getHttpServer())
+      .get(`/admin/matches?search=${encodeURIComponent('徐汇')}`)
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(byTitle.body.total).toBeGreaterThan(0);
+    expect(byTitle.body.items.every((item: { title: string; venueName: string }) =>
+      item.title.includes('徐汇') || item.venueName.includes('徐汇'),
+    )).toBe(true);
+
+    const byHostPhone = await request(app.getHttpServer())
+      .get('/admin/matches?search=13900139000')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(byHostPhone.body.items.every((item: { hostPhone: string }) => item.hostPhone === '13900139000')).toBe(true);
+
+    const noMatch = await request(app.getHttpServer())
+      .get('/admin/matches?search=__nonsense__zzz')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(noMatch.body.items).toHaveLength(0);
+    expect(noMatch.body.total).toBe(0);
+  });
+
+  it('filters admin users by nickname or phone substring', async () => {
+    const byPhone = await request(app.getHttpServer())
+      .get('/admin/users?search=13900139000')
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(byPhone.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'user-reviewee-1', phone: '13900139000' }),
+      ]),
+    );
+    expect(byPhone.body.total).toBe(1);
+
+    const byNick = await request(app.getHttpServer())
+      .get(`/admin/users?search=${encodeURIComponent('球友里卡')}`)
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(byNick.body.items[0]).toMatchObject({ id: 'user-reviewee-1' });
+  });
+
+  it('filters admin venues by name or district', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/admin/venues?search=${encodeURIComponent('静安')}`)
+      .set('X-Admin-Token', adminToken)
+      .expect(200);
+    expect(response.body.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'venue-seed-2' })]),
+    );
+    expect(response.body.items.every((venue: { id: string }) => venue.id !== 'venue-seed-1')).toBe(true);
+  });
+
   it('returns analytics overview with totals, growth and operations buckets', async () => {
     const response = await request(app.getHttpServer())
       .get('/admin/analytics/overview')

@@ -269,9 +269,18 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
 
   return {
     getSummary: () => get<AdminSummary>('/admin/summary'),
-    listMatches: () => get<{ items: AdminMatchRow[] }>('/admin/matches'),
-    listUsers: () => get<{ items: AdminUserRow[] }>('/admin/users'),
-    listVenues: () => get<{ items: AdminVenueRow[] }>('/admin/venues'),
+    listMatches: (search = '') =>
+      get<{ items: AdminMatchRow[]; total: number; page: number; pageSize: number }>(
+        search ? `/admin/matches?search=${encodeURIComponent(search)}` : '/admin/matches',
+      ),
+    listUsers: (search = '') =>
+      get<{ items: AdminUserRow[]; total: number; page: number; pageSize: number }>(
+        search ? `/admin/users?search=${encodeURIComponent(search)}` : '/admin/users',
+      ),
+    listVenues: (search = '') =>
+      get<{ items: AdminVenueRow[]; total: number; page: number; pageSize: number }>(
+        search ? `/admin/venues?search=${encodeURIComponent(search)}` : '/admin/venues',
+      ),
     createVenue: (payload: AdminVenuePayload) => send<AdminVenueRow>('POST', '/admin/venues', payload),
     updateVenue: (id: string, payload: Partial<AdminVenuePayload>) =>
       send<AdminVenueRow>('PATCH', `/admin/venues/${id}`, payload),

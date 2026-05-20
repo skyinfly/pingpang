@@ -42,10 +42,15 @@ export class AdminController {
   }
 
   @Get('matches')
-  listMatches(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  listMatches(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+  ) {
     return this.adminService.listMatches({
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
+      search,
     });
   }
 
@@ -70,10 +75,15 @@ export class AdminController {
   }
 
   @Get('users')
-  listUsers(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  listUsers(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+  ) {
     return this.adminService.listUsers({
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
+      search,
     });
   }
 
@@ -93,10 +103,15 @@ export class AdminController {
   }
 
   @Get('venues')
-  listVenues(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  listVenues(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+  ) {
     return this.adminService.listVenues({
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
+      search,
     });
   }
 
