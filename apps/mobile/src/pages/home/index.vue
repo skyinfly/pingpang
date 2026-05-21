@@ -86,6 +86,7 @@ function openMatchDetail(id: string) {
           data-testid="home-match-card"
           @click="openMatchDetail(item.id)"
         >
+          <image v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" mode="aspectFill" />
           <text class="card-title">{{ item.title }}</text>
           <text class="card-meta">
             {{ item.distanceKm }}km · 还差 {{ item.openSlots }} 人 · 匹配度 {{ item.matchRate }}%
@@ -196,12 +197,19 @@ function openMatchDetail(id: string) {
 
 .card {
   border-radius: $radius-card;
-  padding: 28rpx;
+  overflow: hidden;
   background: $color-surface;
   box-shadow: $shadow-card;
 }
 
+.card-cover {
+  display: block;
+  width: 100%;
+  height: 240rpx;
+}
+
 .card-title {
+  padding: 28rpx 28rpx 0;
   display: block;
   font-size: 30rpx;
   font-weight: 700;
@@ -211,6 +219,7 @@ function openMatchDetail(id: string) {
 .card-meta {
   display: block;
   margin-top: 12rpx;
+  padding: 0 28rpx;
   font-size: 24rpx;
   color: $color-muted;
 }
@@ -218,6 +227,7 @@ function openMatchDetail(id: string) {
 .card-caption {
   display: block;
   margin-top: 16rpx;
+  padding: 0 28rpx 28rpx;
   font-size: 22rpx;
   color: $color-primary;
 }

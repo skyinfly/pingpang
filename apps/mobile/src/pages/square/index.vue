@@ -195,16 +195,19 @@ function openMatchDetail(id: string) {
       class="card"
       @click="openMatchDetail(item.id)"
     >
-      <view class="card-top">
-        <text class="card-title">{{ item.title }}</text>
-        <text class="rate">匹配度 {{ item.matchRate }}%</text>
+      <image v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" mode="aspectFill" />
+      <view class="card-body">
+        <view class="card-top">
+          <text class="card-title">{{ item.title }}</text>
+          <text class="rate">匹配度 {{ item.matchRate }}%</text>
+        </view>
+        <text class="card-subtitle">
+          {{ item.venueName }} · {{ item.distanceKm }}km · 还差 {{ item.openSlots }} 人
+        </text>
+        <text class="card-meta">
+          {{ formatLevel(item.level) }} · {{ formatMatchTime(item.startTime) }} · 推荐分 {{ item.score }}
+        </text>
       </view>
-      <text class="card-subtitle">
-        {{ item.venueName }} · {{ item.distanceKm }}km · 还差 {{ item.openSlots }} 人
-      </text>
-      <text class="card-meta">
-        {{ formatLevel(item.level) }} · {{ formatMatchTime(item.startTime) }} · 推荐分 {{ item.score }}
-      </text>
     </view>
 
     <view v-if="matchesQuery.isError.value" class="card">
@@ -273,9 +276,19 @@ function openMatchDetail(id: string) {
 .card {
   margin-top: 20rpx;
   border-radius: $radius-card;
-  padding: 28rpx;
+  overflow: hidden;
   background: $color-surface;
   box-shadow: $shadow-card;
+}
+
+.card-cover {
+  display: block;
+  width: 100%;
+  height: 240rpx;
+}
+
+.card-body {
+  padding: 28rpx;
 }
 
 .card-top {

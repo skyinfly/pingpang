@@ -138,9 +138,16 @@ onMounted(() => {
 
     <template v-else-if="profile">
       <view class="hero">
-        <text class="eyebrow">球友档案</text>
-        <text class="title">{{ profile.nickname }}</text>
-        <text class="hero-meta">{{ profile.city }} · {{ formatLevel(profile.level) }} · 信用 {{ profile.creditScore }}</text>
+        <view class="hero-top">
+          <view>
+            <text class="eyebrow">球友档案</text>
+            <text class="title">{{ profile.nickname }}</text>
+            <text class="hero-meta">{{ profile.city }} · {{ formatLevel(profile.level) }} · 信用 {{ profile.creditScore }}</text>
+          </view>
+          <view v-if="profile.avatarUrl" class="avatar-wrap">
+            <image :src="profile.avatarUrl" class="avatar" mode="aspectFill" />
+          </view>
+        </view>
         <view class="hero-stats">
           <view class="hero-stat">
             <text class="stat-value">{{ profile.hostedMatches }}</text>
@@ -246,6 +253,24 @@ onMounted(() => {
   background: linear-gradient(135deg, #ff6a3d 0%, #ff8f57 100%);
   box-shadow: $shadow-card;
   color: #fff;
+}
+
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.avatar-wrap {
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 999rpx;
+  border: 3rpx solid rgba(255, 255, 255, 0.36);
 }
 
 .eyebrow {

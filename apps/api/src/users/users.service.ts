@@ -69,6 +69,7 @@ export class UsersService {
         nickname: true,
         city: true,
         level: true,
+        avatarUrl: true,
         creditScore: true,
         createdAt: true,
       },

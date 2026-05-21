@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { createMatch, fetchMatchOptions } from '../../services/api';
+import { createMatch, fetchMatchOptions, uploadFile } from '../../services/api';
 import type {
   MatchOptionPreset,
   MatchOptionTimeSlot,
@@ -19,6 +19,8 @@ const loading = ref(true);
 const loadingError = ref('');
 const submitting = ref(false);
 const submitError = ref('');
+const coverUrl = ref('');
+const coverUploading = ref(false);
 
 const venueOptions = ref<MatchOptionVenue[]>([]);
 const timeOptions = ref<MatchOptionTimeSlot[]>([]);
@@ -230,6 +232,30 @@ function redirectToLogin() {
   });
 }
 
+function handlePickCover() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      const filePath = res.tempFilePaths[0];
+      if (!filePath) return;
+      coverUploading.value = true;
+      submitError.value = '';
+      uploadFile('match-cover', filePath)
+        .then((result) => {
+          coverUrl.value = result.url;
+        })
+        .catch(() => {
+          submitError.value = '封面图上传失败，请稍后再试。';
+        })
+        .finally(() => {
+          coverUploading.value = false;
+        });
+    },
+  });
+}
+
 async function handlePublish() {
   submitError.value = '';
   syncDraft();
@@ -255,6 +281,7 @@ async function handlePublish() {
       level: selectedLevel.value.value,
       maxPlayers: selectedPlayers.value.value,
       startDate: selectedDate.value,
+      ...(coverUrl.value ? { coverUrl: coverUrl.value } : {}),
     });
 
     uni.switchTab({
@@ -398,6 +425,14 @@ onMounted(() => {
           {{ selectedVenue?.city ?? '上海' }} · {{ selectedVenue?.district ?? '球馆待选' }} ·
           {{ selectedTime?.label ?? '时间待选' }}
         </text>
+      </view>
+
+      <view class="cover-picker" data-testid="cover-picker" @click="handlePickCover">
+        <image v-if="coverUrl" :src="coverUrl" class="cover-img" mode="aspectFill" />
+        <view v-else class="cover-placeholder">
+          <text class="cover-placeholder-text">+ 添加封面图（可选）</text>
+        </view>
+        <text v-if="coverUploading" class="cover-uploading">上传中...</text>
       </view>
 
       <view v-for="item in fieldRows" :key="item.label" class="field-row">
@@ -587,6 +622,42 @@ onMounted(() => {
   color: $color-muted;
   font-size: 22rpx;
   line-height: 1.5;
+}
+
+.cover-picker {
+  margin-top: 24rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.cover-img {
+  display: block;
+  width: 100%;
+  height: 280rpx;
+  border-radius: 20rpx;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160rpx;
+  border-radius: 20rpx;
+  background: rgba(15, 28, 46, 0.06);
+  border: 2rpx dashed rgba(15, 28, 46, 0.18);
+}
+
+.cover-placeholder-text {
+  color: $color-muted;
+  font-size: 26rpx;
+}
+
+.cover-uploading {
+  display: block;
+  margin-top: 12rpx;
+  color: $color-muted;
+  font-size: 24rpx;
+  text-align: center;
 }
 
 .field-row {

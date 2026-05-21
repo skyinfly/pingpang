@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { updateMyProfile } from '../../services/api';
+import { updateMyProfile, uploadFile } from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 
 const authStore = useAuthStore();
 const nickname = ref(authStore.user?.nickname ?? '');
 const city = ref(authStore.user?.city ?? '');
 const level = ref(authStore.user?.level ?? 'intermediate');
+const avatarUrl = ref(authStore.user?.avatarUrl ?? '');
+const avatarUploading = ref(false);
 const submitting = ref(false);
 const message = ref('');
 const messageKind = ref<'info' | 'error'>('info');
@@ -26,11 +28,43 @@ watch(
     nickname.value = user.nickname;
     city.value = user.city;
     level.value = user.level;
+    avatarUrl.value = user.avatarUrl ?? '';
   },
 );
 
 function pickLevel(value: string) {
   level.value = value;
+}
+
+function handlePickAvatar() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      const filePath = res.tempFilePaths[0];
+      if (!filePath) return;
+      avatarUploading.value = true;
+      message.value = '';
+      uploadFile('avatar', filePath)
+        .then((result) => {
+          avatarUrl.value = result.url;
+          return updateMyProfile({ avatarUrl: result.url });
+        })
+        .then((updated) => {
+          authStore.setSession({ token: authStore.token!, user: updated });
+          message.value = '头像已更新。';
+          messageKind.value = 'info';
+        })
+        .catch(() => {
+          message.value = '头像上传失败，请稍后再试。';
+          messageKind.value = 'error';
+        })
+        .finally(() => {
+          avatarUploading.value = false;
+        });
+    },
+  });
 }
 
 async function handleSubmit() {
@@ -81,6 +115,14 @@ async function handleSubmit() {
     <view class="card">
       <text class="title">编辑个人资料</text>
       <text class="subtitle">资料会显示在球友档案、申请记录和评价里。</text>
+
+      <view class="avatar-row" data-testid="avatar-picker" @click="handlePickAvatar">
+        <image v-if="avatarUrl" :src="avatarUrl" class="avatar-img" mode="aspectFill" />
+        <view v-else class="avatar-placeholder">
+          <text class="avatar-placeholder-text">头像</text>
+        </view>
+        <text class="avatar-label">{{ avatarUploading ? '上传中...' : '点击更换头像' }}</text>
+      </view>
 
       <view class="field">
         <text class="label">昵称</text>
@@ -146,6 +188,45 @@ async function handleSubmit() {
   margin-top: 12rpx;
   font-size: 24rpx;
   color: $color-muted;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-top: 28rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: #fff7ef;
+}
+
+.avatar-img {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 106, 61, 0.16);
+  flex-shrink: 0;
+}
+
+.avatar-placeholder-text {
+  color: $color-primary;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.avatar-label {
+  color: $color-muted;
+  font-size: 26rpx;
 }
 
 .field {

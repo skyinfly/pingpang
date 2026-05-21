@@ -13,6 +13,7 @@ export type PublicUserProfile = {
   nickname: string;
   city: string;
   level: string;
+  avatarUrl?: string | null;
   creditScore: number;
   createdAt: string;
   hostedMatches: number;
@@ -23,6 +24,7 @@ export type UpdateProfilePayload = {
   nickname?: string;
   city?: string;
   level?: string;
+  avatarUrl?: string;
 };
 
 export type SessionPayload = {

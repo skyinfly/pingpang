@@ -106,14 +106,22 @@ function openEditProfile() {
 
     <template v-else>
       <view class="hero">
-        <text class="eyebrow">信用档案</text>
-        <text class="name">{{ profile?.user.nickname ?? '正在加载资料...' }}</text>
-        <text class="meta">{{ profileMeta }}</text>
+        <view class="hero-top">
+          <view>
+            <text class="eyebrow">信用档案</text>
+            <text class="name">{{ profile?.user.nickname ?? '正在加载资料...' }}</text>
+            <text class="meta">{{ profileMeta }}</text>
+          </view>
+          <view v-if="authStore.user?.avatarUrl" class="avatar-wrap">
+            <image :src="authStore.user.avatarUrl" class="avatar" mode="aspectFill" />
+          </view>
+        </view>
         <view class="hero-actions">
           <button class="ghost-action" data-testid="edit-profile-entry" @click="openEditProfile">编辑资料</button>
           <button class="logout-button" data-testid="logout-action" @click="handleLogout">退出登录</button>
         </view>
       </view>
+
 
       <view class="score-card">
         <text class="score-label">信用分</text>
@@ -235,6 +243,24 @@ function openEditProfile() {
   border-radius: 30rpx;
   background: linear-gradient(145deg, #0f1c2e 0%, #25374f 100%);
   box-shadow: $shadow-card;
+}
+
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.avatar-wrap {
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 999rpx;
+  border: 3rpx solid rgba(255, 255, 255, 0.28);
 }
 
 .eyebrow,

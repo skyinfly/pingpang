@@ -728,10 +728,13 @@ if (initialMatchId) {
     </view>
 
     <template v-else>
-      <view class="hero">
-        <text class="eyebrow">推荐球局</text>
-        <text class="title">{{ match.title }}</text>
-        <text class="subtitle">{{ match.venueName }} · {{ match.city }}</text>
+      <view class="hero" :class="{ 'hero--has-cover': match.coverUrl }">
+        <image v-if="match.coverUrl" :src="match.coverUrl" class="hero-cover" mode="aspectFill" />
+        <view class="hero-content">
+          <text class="eyebrow">推荐球局</text>
+          <text class="title">{{ match.title }}</text>
+          <text class="subtitle">{{ match.venueName }} · {{ match.city }}</text>
+        </view>
       </view>
 
       <view class="panel">
@@ -1158,8 +1161,28 @@ if (initialMatchId) {
 }
 
 .hero {
-  padding: 32rpx;
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(145deg, #0f1c2e 0%, #233954 100%);
+}
+
+.hero-cover {
+  display: block;
+  width: 100%;
+  height: 360rpx;
+}
+
+.hero--has-cover .hero-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32rpx;
+  background: linear-gradient(to top, rgba(10, 20, 35, 0.88) 0%, transparent 100%);
+}
+
+.hero-content {
+  padding: 32rpx;
 }
 
 .eyebrow,

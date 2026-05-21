@@ -1,5 +1,5 @@
 ﻿import { useAuthStore } from '../stores/auth';
-import { http } from './http';
+import { http, resolveApiBaseUrl } from './http';
 import type {
   ChatThreadDetail,
   ChatThreadSummary,
@@ -19,6 +19,8 @@ import type {
   SessionPayload,
   SessionUser,
   UpdateProfilePayload,
+  UploadKind,
+  UploadResponse,
   ThreadMessagesResponse,
   ThreadReadResponse,
 } from './types';
@@ -63,9 +65,6 @@ export function loginWithWechat(code: string) {
     data: { code },
   });
 }
-
-import { resolveApiBaseUrl } from './http';
-import type { UploadKind, UploadResponse } from './types';
 
 export function uploadFile(kind: UploadKind, filePath: string): Promise<UploadResponse> {
   const authStore = useAuthStore();
@@ -306,7 +305,6 @@ export const apiClient = {
   fetchMyProfile,
   updateMyProfile,
   uploadFile,
-  updateMyProfile,
   fetchPublicProfile,
   listMatches,
   listMyMatches,
