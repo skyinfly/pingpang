@@ -11,14 +11,22 @@
   },
   "dependencies": {
     "@dcloudio/uni-components": "3.0.0-alpha-5000720260416001",
+    "@tanstack/match-sorter-utils": "^8.19.4",
     "@tanstack/query-core": "5.99.0",
     "@tanstack/vue-query": "^5.99.0",
+    "@vue/devtools-api": "^8.1.2",
+    "@vue/devtools-kit": "^8.1.2",
+    "@vue/devtools-shared": "^8.1.2",
     "@vue/reactivity": "3.4.21",
     "@vue/runtime-core": "3.4.21",
     "@vue/runtime-dom": "3.4.21",
     "@vue/shared": "3.4.21",
+    "birpc": "^4.0.0",
+    "hookable": "^6.1.1",
+    "perfect-debounce": "^2.1.0",
     "pinia": "2.1.7",
-    "vue": "3.4.21"
+    "vue": "3.4.21",
+    "vue-demi": "^0.14.10"
   },
   "devDependencies": {
     "@dcloudio/types": "^3.4.16",

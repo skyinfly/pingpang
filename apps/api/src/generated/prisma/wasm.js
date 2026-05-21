@@ -288,7 +288,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\CODE\\pingpang\\apps\\api\\src\\generated\\prisma",
+      "value": "E:\\CODE\\pingpang\\apps\\api\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -302,7 +302,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\CODE\\pingpang\\apps\\api\\prisma\\schema.prisma",
+    "sourceFilePath": "E:\\CODE\\pingpang\\apps\\api\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
