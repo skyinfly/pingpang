@@ -4,17 +4,23 @@
 
 import { spawnSync } from 'node:child_process';
 
+const repoRoot = new URL('..', import.meta.url).pathname;
+
+const isWin = process.platform === 'win32';
+const vueTscBin = isWin ? 'apps/mobile/node_modules/.bin/vue-tsc.CMD' : 'apps/mobile/node_modules/.bin/vue-tsc';
+const uniBin = isWin ? 'node_modules/.bin/uni.CMD' : 'node_modules/.bin/uni';
+
 const commands = [
-  ['Workspace smoke', 'node', ['tools/verify-workspace.mjs'], 'D:/CODE/pingpang'],
-  ['Contracts typecheck', 'corepack', ['pnpm', '--filter', '@pingpang/contracts', 'exec', 'tsc', '--noEmit', '-p', 'tsconfig.build.json'], 'D:/CODE/pingpang'],
-  ['API typecheck', 'corepack', ['pnpm', '--filter', '@pingpang/api', 'exec', 'tsc', '--noEmit', '-p', 'tsconfig.json'], 'D:/CODE/pingpang'],
-  ['API build', 'corepack', ['pnpm', '--filter', '@pingpang/api', 'build'], 'D:/CODE/pingpang'],
-  ['Admin typecheck', 'corepack', ['pnpm', '--filter', '@pingpang/admin', 'typecheck'], 'D:/CODE/pingpang'],
-  ['Admin tests', 'corepack', ['pnpm', '--filter', '@pingpang/admin', 'test'], 'D:/CODE/pingpang'],
-  ['Admin build', 'corepack', ['pnpm', '--filter', '@pingpang/admin', 'build'], 'D:/CODE/pingpang'],
-  ['Mobile typecheck', 'D:/CODE/pingpang/apps/mobile/node_modules/.bin/vue-tsc.CMD', ['--noEmit', '-p', 'D:/CODE/pingpang/apps/mobile/tsconfig.json'], 'D:/CODE/pingpang'],
-  ['Mobile tests', 'corepack', ['pnpm', '--filter', '@pingpang/mobile', 'test'], 'D:/CODE/pingpang'],
-  ['Mobile h5 build', 'D:/CODE/pingpang/apps/mobile/node_modules/.bin/uni.CMD', ['build', '-p', 'h5'], 'D:/CODE/pingpang/apps/mobile'],
+  ['Workspace smoke', 'node', ['tools/verify-workspace.mjs'], repoRoot],
+  ['Contracts typecheck', 'corepack', ['pnpm', '--filter', '@pingpang/contracts', 'exec', 'tsc', '--noEmit', '-p', 'tsconfig.build.json'], repoRoot],
+  ['API typecheck', 'corepack', ['pnpm', '--filter', '@pingpang/api', 'exec', 'tsc', '--noEmit', '-p', 'tsconfig.json'], repoRoot],
+  ['API build', 'corepack', ['pnpm', '--filter', '@pingpang/api', 'build'], repoRoot],
+  ['Admin typecheck', 'corepack', ['pnpm', '--filter', '@pingpang/admin', 'typecheck'], repoRoot],
+  ['Admin tests', 'corepack', ['pnpm', '--filter', '@pingpang/admin', 'test'], repoRoot],
+  ['Admin build', 'corepack', ['pnpm', '--filter', '@pingpang/admin', 'build'], repoRoot],
+  ['Mobile typecheck', vueTscBin, ['--noEmit', '-p', 'apps/mobile/tsconfig.json'], repoRoot],
+  ['Mobile tests', 'corepack', ['pnpm', '--filter', '@pingpang/mobile', 'test'], repoRoot],
+  ['Mobile h5 build', uniBin, ['build', '-p', 'h5'], new URL('../apps/mobile', import.meta.url).pathname],
 ];
 
 async function main() {
