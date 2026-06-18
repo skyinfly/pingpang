@@ -5,6 +5,10 @@ import { useMyMatchesQuery } from '../../composables/useMyMatchesQuery';
 import { useJoinedMatchesQuery } from '../../composables/useJoinedMatchesQuery';
 import { useAuthStore } from '../../stores/auth';
 import { formatLevel, formatReviewTag } from '../../utils/copy';
+import type { MatchCard, MatchLifecycle } from '../../services/types';
+import LocationHeader from '../../components/LocationHeader.vue';
+import AppToast from '../../components/AppToast.vue';
+import AppModal from '../../components/AppModal.vue';
 
 const authStore = useAuthStore();
 const activeUserId = computed(() => authStore.user?.id ?? '');
@@ -15,6 +19,49 @@ const joinedMatchesQuery = useJoinedMatchesQuery(activeUserId);
 const profile = computed(() => profileQuery.data.value);
 const myMatches = computed(() => myMatchesQuery.data.value?.items ?? []);
 const joinedMatches = computed(() => joinedMatchesQuery.data.value?.items ?? []);
+
+/**
+ * Sort matches into life-cycle buckets so the page can render them in
+ * sections. Falls back to a client-side computation when the server
+ * didn't send a lifecycle (older API revisions / cached responses).
+ */
+function deriveLifecycle(match: MatchCard): MatchLifecycle {
+  if (match.lifecycle) return match.lifecycle;
+  if (match.status === 'cancelled') return 'cancelled';
+  const start = new Date(match.startTime).getTime();
+  const now = Date.now();
+  if (start > now) return 'upcoming';
+  if (now - start <= 2 * 60 * 60 * 1000) return 'live';
+  return 'completed';
+}
+
+function groupByLifecycle(matches: MatchCard[]) {
+  const upcoming: MatchCard[] = [];
+  const live: MatchCard[] = [];
+  const history: MatchCard[] = []; // completed + cancelled combined for the UI
+  for (const match of matches) {
+    const lifecycle = deriveLifecycle(match);
+    if (lifecycle === 'live') live.push(match);
+    else if (lifecycle === 'upcoming') upcoming.push(match);
+    else history.push(match);
+  }
+  return { live, upcoming, history };
+}
+
+const myMatchesGroups = computed(() => groupByLifecycle(myMatches.value));
+const joinedMatchesGroups = computed(() => groupByLifecycle(joinedMatches.value));
+
+/** Total history count = hosted + joined history, deduped by match id. */
+const historyTotal = computed(() => {
+  const ids = new Set<string>();
+  for (const m of myMatchesGroups.value.history) ids.add(m.id);
+  for (const m of joinedMatchesGroups.value.history) ids.add(m.id);
+  return ids.size;
+});
+
+function openHistory() {
+  uni.navigateTo({ url: '/pages/history-matches/index' });
+}
 
 function getQueryStatusCode(error: unknown) {
   if (error && typeof error === 'object' && 'statusCode' in error) {
@@ -91,10 +138,15 @@ function openEditProfile() {
     url: '/pages/edit-profile/index',
   });
 }
+
+function openLegalPage(path: string) {
+  uni.navigateTo({ url: path });
+}
 </script>
 
 <template>
   <view class="page">
+    <LocationHeader />
     <template v-if="!isAuthenticated">
       <view class="hero">
         <text class="eyebrow">我的</text>
@@ -163,29 +215,43 @@ function openEditProfile() {
           <text class="stat-label">去首页发起第一场吧</text>
         </view>
 
-        <view
-          v-for="item in myMatches"
-          :key="item.id"
-          class="hosted-card"
-          :class="{ 'hosted-card--cancelled': item.status === 'cancelled' }"
-          data-testid="hosted-match-card"
-          @click="openMatchDetail(item.id)"
-        >
-          <text class="hosted-title">
-            {{ item.title }}
-            <text v-if="item.status === 'cancelled'" class="hosted-status-tag">已取消</text>
-          </text>
-          <text class="hosted-copy">{{ item.venueName }}</text>
-          <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
-          <text class="hosted-meta">
-            <template v-if="item.status === 'cancelled'">
-              这场球局已被取消，球友会在消息中心看到通知。
-            </template>
-            <template v-else>
-              还有 {{ item.openSlots }} 个空位 · 匹配度 {{ item.matchRate }}%
-            </template>
-          </text>
-        </view>
+        <!-- 进行中 -->
+        <template v-if="myMatchesGroups.live.length > 0">
+          <text class="lifecycle-heading lifecycle-heading--live">进行中</text>
+          <view
+            v-for="item in myMatchesGroups.live"
+            :key="item.id"
+            class="hosted-card hosted-card--live"
+            data-testid="hosted-match-card"
+            @click="openMatchDetail(item.id)"
+          >
+            <text class="hosted-title">
+              {{ item.title }}
+              <text class="hosted-status-tag hosted-status-tag--live">进行中</text>
+            </text>
+            <text class="hosted-copy">{{ item.venueName }}</text>
+            <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
+            <text class="hosted-meta">还有 {{ item.openSlots }} 个空位 · 匹配度 {{ item.matchRate }}%</text>
+          </view>
+        </template>
+
+        <!-- 未开始 -->
+        <template v-if="myMatchesGroups.upcoming.length > 0">
+          <text class="lifecycle-heading">未开始</text>
+          <view
+            v-for="item in myMatchesGroups.upcoming"
+            :key="item.id"
+            class="hosted-card"
+            data-testid="hosted-match-card"
+            @click="openMatchDetail(item.id)"
+          >
+            <text class="hosted-title">{{ item.title }}</text>
+            <text class="hosted-copy">{{ item.venueName }}</text>
+            <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
+            <text class="hosted-meta">还有 {{ item.openSlots }} 个空位 · 匹配度 {{ item.matchRate }}%</text>
+          </view>
+        </template>
+
       </view>
 
       <view class="panel">
@@ -201,31 +267,71 @@ function openEditProfile() {
           <text class="stat-label">去广场挑一场合适的，申请加入吧</text>
         </view>
 
-        <view
-          v-for="item in joinedMatches"
-          :key="item.id"
-          class="hosted-card joined-card"
-          :class="{ 'hosted-card--cancelled': item.status === 'cancelled' }"
-          data-testid="joined-match-card"
-          @click="openMatchDetail(item.id)"
-        >
-          <text class="hosted-title">
-            {{ item.title }}
-            <text v-if="item.status === 'cancelled'" class="hosted-status-tag">已取消</text>
-          </text>
-          <text class="hosted-copy">{{ item.venueName }}</text>
-          <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
-          <text class="hosted-meta">
-            <template v-if="item.status === 'cancelled'">
-              主理人已取消这场球局，去广场看看其他可以约的球。
-            </template>
-            <template v-else>
-              这场球局已经通过审核，可以继续进聊天沟通
-            </template>
-          </text>
-        </view>
+        <!-- 进行中 -->
+        <template v-if="joinedMatchesGroups.live.length > 0">
+          <text class="lifecycle-heading lifecycle-heading--live">进行中</text>
+          <view
+            v-for="item in joinedMatchesGroups.live"
+            :key="item.id"
+            class="hosted-card joined-card hosted-card--live"
+            data-testid="joined-match-card"
+            @click="openMatchDetail(item.id)"
+          >
+            <text class="hosted-title">
+              {{ item.title }}
+              <text class="hosted-status-tag hosted-status-tag--live">进行中</text>
+            </text>
+            <text class="hosted-copy">{{ item.venueName }}</text>
+            <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
+            <text class="hosted-meta">现在正在打，记得到场。</text>
+          </view>
+        </template>
+
+        <!-- 未开始 -->
+        <template v-if="joinedMatchesGroups.upcoming.length > 0">
+          <text class="lifecycle-heading">未开始</text>
+          <view
+            v-for="item in joinedMatchesGroups.upcoming"
+            :key="item.id"
+            class="hosted-card joined-card"
+            data-testid="joined-match-card"
+            @click="openMatchDetail(item.id)"
+          >
+            <text class="hosted-title">{{ item.title }}</text>
+            <text class="hosted-copy">{{ item.venueName }}</text>
+            <text class="hosted-copy">{{ formatStartTime(item.startTime) }} · {{ formatLevel(item.level) }}</text>
+            <text class="hosted-meta">这场球局已经通过审核，可以继续进聊天沟通</text>
+          </view>
+        </template>
+
       </view>
+
+      <!-- Unified history entry: hosted + joined combined into one
+           tappable row that links to /pages/history-matches. Both
+           halves are merged + role-tagged on that page. -->
+      <view
+        v-if="historyTotal > 0"
+        class="history-entry"
+        data-testid="history-entry"
+        @click="openHistory()"
+      >
+        <text class="history-entry-label">历史球局</text>
+        <text class="history-entry-meta">{{ historyTotal }} 场</text>
+        <text class="history-entry-arrow">›</text>
+      </view>
+
     </template>
+
+    <!-- Legal footer: always visible at the bottom of the profile tab so
+         users can find privacy + terms even after login. -->
+    <view class="legal-footer">
+      <text class="legal-link" data-testid="profile-terms" @click="openLegalPage('/pages/legal/terms')">用户协议</text>
+      <text class="legal-divider">·</text>
+      <text class="legal-link" data-testid="profile-privacy" @click="openLegalPage('/pages/legal/privacy')">隐私政策</text>
+    </view>
+
+    <AppToast />
+    <AppModal />
   </view>
 </template>
 
@@ -301,6 +407,23 @@ function openEditProfile() {
   display: flex;
   gap: 16rpx;
   margin-top: 20rpx;
+}
+
+.legal-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 48rpx;
+  padding-bottom: 24rpx;
+}
+.legal-link {
+  font-size: 24rpx;
+  color: #7a8699;
+}
+.legal-divider {
+  font-size: 24rpx;
+  color: #c9d1de;
 }
 
 .ghost-action,
@@ -457,5 +580,72 @@ function openEditProfile() {
   color: #8e2e22;
   font-size: 20rpx;
   font-weight: 800;
+}
+.hosted-status-tag--live {
+  background: rgba(31, 143, 67, 0.16);
+  color: #1f6f3f;
+}
+
+/* Section heading between lifecycle buckets ("进行中" / "未开始" / "历史球局"). */
+.lifecycle-heading {
+  display: block;
+  margin-top: 24rpx;
+  margin-bottom: -4rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $color-muted;
+  letter-spacing: 1rpx;
+}
+.lifecycle-heading--live { color: #1f6f3f; }
+.lifecycle-heading--history { color: $color-muted; }
+
+.hosted-card--live {
+  border: 2rpx solid rgba(31, 143, 67, 0.32);
+}
+.hosted-card--history {
+  background: #f3eee6;
+  opacity: 0.86;
+}
+.hosted-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12rpx;
+}
+.hosted-delete {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #c0461d;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 244, 236, 0.85);
+  cursor: pointer;
+}
+.hosted-delete--busy { opacity: 0.5; }
+
+/* Compact "历史球局 (N) ›" entry row that links to the dedicated page. */
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 18rpx;
+  background: rgba(15, 28, 46, 0.04);
+  cursor: pointer;
+}
+.history-entry-label {
+  flex: 1;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: $color-ink;
+}
+.history-entry-meta {
+  font-size: 24rpx;
+  color: $color-muted;
+}
+.history-entry-arrow {
+  font-size: 30rpx;
+  color: $color-muted;
+  margin-left: 4rpx;
 }
 </style>

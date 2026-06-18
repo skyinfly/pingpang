@@ -14,6 +14,13 @@ export function useThreadDetailQuery(options: {
     enabled: computed(() => Boolean(resolvedUserId.value && resolvedThreadId.value)),
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
+    // 403 ("not a member") is a permanent answer — don't burn 3 retries
+    // before the chat page can surface its access-denied empty state.
+    retry: (failureCount, error: unknown) => {
+      const status = (error as { statusCode?: number } | null)?.statusCode;
+      if (status && status >= 400 && status < 500) return false;
+      return failureCount < 2;
+    },
     queryFn: async () => apiClient.fetchChatThreadDetail(resolvedThreadId.value),
   });
 }

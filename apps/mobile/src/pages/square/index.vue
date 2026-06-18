@@ -2,11 +2,30 @@
 import { computed, ref } from 'vue';
 import { useMatchesQuery } from '../../composables/useMatchesQuery';
 import { formatLevel } from '../../utils/copy';
+import LocationHeader from '../../components/LocationHeader.vue';
 
 type TimeFilter = 'all' | 'today' | 'tomorrow' | 'weekend' | 'next7days';
 
-const cityOptions = ['上海'];
-const levelOptions = ['beginner', 'intermediate', 'advanced'];
+// City list is now [全部, 上海, 北京, 成都, 深圳, 广州, 杭州] — covers
+// the cities seeded venues live in plus the major Tier-1 markets. "全部"
+// is the default so a brand-new user (or someone visiting from a city
+// we haven't listed yet) always sees something on the square instead of
+// an empty state.
+const cityOptions: Array<{ value: string; label: string }> = [
+  { value: '', label: '全部' },
+  { value: '上海', label: '上海' },
+  { value: '北京', label: '北京' },
+  { value: '成都市', label: '成都' },
+  { value: '深圳', label: '深圳' },
+  { value: '广州', label: '广州' },
+  { value: '杭州', label: '杭州' },
+];
+const levelOptions: Array<{ value: string; label: string }> = [
+  { value: '', label: '全部' },
+  { value: 'beginner', label: '初级' },
+  { value: 'intermediate', label: '中级' },
+  { value: 'advanced', label: '高级' },
+];
 const timeOptions: Array<{ value: TimeFilter; label: string }> = [
   { value: 'all', label: '全部时间' },
   { value: 'today', label: '今晚' },
@@ -15,12 +34,14 @@ const timeOptions: Array<{ value: TimeFilter; label: string }> = [
   { value: 'next7days', label: '7 天内' },
 ];
 
-const selectedCity = ref('上海');
-const selectedLevel = ref('intermediate');
+const selectedCity = ref('');
+const selectedLevel = ref('');
 const selectedTime = ref<TimeFilter>('all');
 const filters = computed(() => ({
-  city: selectedCity.value,
-  level: selectedLevel.value,
+  // Empty strings disable the server-side filter so '全部' returns
+  // every open match.
+  city: selectedCity.value || undefined,
+  level: selectedLevel.value || undefined,
 }));
 
 function getRelativeDayLabel(date: Date) {
@@ -134,20 +155,21 @@ function openMatchDetail(id: string) {
 
 <template>
   <view class="page">
+    <LocationHeader />
     <text class="title">约局广场</text>
 
     <view class="filter-section">
       <text class="filter-label">城市</text>
       <view class="chip-row">
         <button
-          v-for="city in cityOptions"
-          :key="city"
+          v-for="option in cityOptions"
+          :key="option.value || 'all'"
           class="chip"
-          :class="{ 'chip--active': selectedCity === city }"
-          :data-filter-city="city"
-          @click="selectedCity = city"
+          :class="{ 'chip--active': selectedCity === option.value }"
+          :data-filter-city="option.value || 'all'"
+          @click="selectedCity = option.value"
         >
-          {{ city }}
+          {{ option.label }}
         </button>
       </view>
     </view>
@@ -172,14 +194,14 @@ function openMatchDetail(id: string) {
       <text class="filter-label">水平</text>
       <view class="chip-row">
         <button
-          v-for="level in levelOptions"
-          :key="level"
+          v-for="option in levelOptions"
+          :key="option.value || 'all'"
           class="chip"
-          :class="{ 'chip--active': selectedLevel === level }"
-          :data-filter-level="level"
-          @click="selectedLevel = level"
+          :class="{ 'chip--active': selectedLevel === option.value }"
+          :data-filter-level="option.value || 'all'"
+          @click="selectedLevel = option.value"
         >
-          {{ formatLevel(level) }}
+          {{ option.label }}
         </button>
       </view>
     </view>

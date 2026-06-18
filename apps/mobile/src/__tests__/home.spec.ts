@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
+import { createPinia } from 'pinia';
 import HomePage from '../pages/home/index.vue';
 
 describe('HomePage', () => {
@@ -45,7 +46,9 @@ describe('HomePage', () => {
 
     const wrapper = mount(HomePage, {
       global: {
-        plugins: [[VueQueryPlugin, { queryClient: new QueryClient() }]],
+        // Pinia is needed because useMatchesQuery now reads the shared
+        // location store to attach lat/lng to /matches calls.
+        plugins: [createPinia(), [VueQueryPlugin, { queryClient: new QueryClient() }]],
       },
     });
 

@@ -19,6 +19,114 @@ export class UsersService {
     });
   }
 
+  /** Lookup by phone without side effects. Returns null when not registered. */
+  async findByPhone(phone: string): Promise<SessionUser | null> {
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    return (user as SessionUser) ?? null;
+  }
+
+  /** Lookup by email (case-normalized) without side effects. */
+  async findByEmail(email: string): Promise<SessionUser | null> {
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    return (user as SessionUser) ?? null;
+  }
+
+  /**
+   * Email registration with a bcrypt password hash. Caller is expected
+   * to have already hashed the password — this service only persists,
+   * so the AuthService owns the bcrypt cost factor in one place.
+   */
+  async createEmailUser(payload: {
+    email: string;
+    passwordHash: string;
+    nickname: string;
+    city?: string;
+    level?: 'beginner' | 'intermediate' | 'advanced';
+  }): Promise<SessionUser> {
+    const email = payload.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new Error('email already registered');
+    }
+    const created = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash: payload.passwordHash,
+        phone: null,
+        nickname: payload.nickname.trim(),
+        city: (payload.city ?? '上海').trim(),
+        level: payload.level ?? 'intermediate',
+        creditScore: 100,
+      },
+      // Explicit select keeps the bcrypt hash off the response — callers
+      // never need it, and JSON.stringify on the raw row would happily
+      // leak it through to the client.
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        nickname: true,
+        city: true,
+        level: true,
+        avatarUrl: true,
+        creditScore: true,
+      },
+    });
+    return created as SessionUser;
+  }
+
+  /**
+   * Return the raw user row (incl. passwordHash) for login verification.
+   * Separate from findByEmail so the SessionUser type stays clean of the
+   * hash, which we never want to leak to callers other than AuthService.
+   */
+  async findEmailUserForAuth(email: string) {
+    const normalized = email.toLowerCase().trim();
+    return this.prisma.user.findUnique({
+      where: { email: normalized },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        nickname: true,
+        city: true,
+        level: true,
+        avatarUrl: true,
+        creditScore: true,
+        passwordHash: true,
+      },
+    });
+  }
+
+  /**
+   * Create a brand-new user from the registration form. Caller is
+   * responsible for verifying the OTP before invoking this — this method
+   * only persists the chosen profile. Throws if the phone is already in
+   * use so the controller can return a tidy 409 instead of leaking the
+   * Prisma unique-constraint error.
+   */
+  async createPhoneUser(payload: {
+    phone: string;
+    nickname: string;
+    city?: string;
+    level?: 'beginner' | 'intermediate' | 'advanced';
+  }): Promise<SessionUser> {
+    const existing = await this.prisma.user.findUnique({ where: { phone: payload.phone } });
+    if (existing) {
+      throw new Error('phone already registered');
+    }
+    const created = await this.prisma.user.create({
+      data: {
+        phone: payload.phone,
+        nickname: payload.nickname.trim(),
+        city: (payload.city ?? '上海').trim(),
+        level: payload.level ?? 'intermediate',
+        creditScore: 100,
+      },
+    });
+    return created as SessionUser;
+  }
+
   async upsertWechatUser(payload: {
     openId: string;
     unionId?: string;

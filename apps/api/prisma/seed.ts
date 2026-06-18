@@ -6,6 +6,9 @@ loadLocalEnvFile();
 
 const seededRecordTimestamp = new Date('2026-04-22T10:00:00+08:00');
 
+// Real-ish GCJ-02 coordinates so /matches distance sort produces sensible
+// numbers in dev. Pulled from Tencent Maps for actual landmarks near each
+// district; close enough to demo the geo sort without leaking exact venues.
 const seededVenues = [
   {
     id: 'venue-seed-1',
@@ -13,6 +16,9 @@ const seededVenues = [
     city: '上海',
     district: '徐汇',
     distanceKm: 1.8,
+    latitude: 31.1949,
+    longitude: 121.4374,
+    address: '上海市徐汇区肇嘉浜路 1065 号',
     sortOrder: 1,
     isActive: true,
   },
@@ -22,6 +28,9 @@ const seededVenues = [
     city: '上海',
     district: '静安',
     distanceKm: 3.2,
+    latitude: 31.2238,
+    longitude: 121.4480,
+    address: '上海市静安区南京西路 1788 号',
     sortOrder: 2,
     isActive: true,
   },
@@ -31,6 +40,9 @@ const seededVenues = [
     city: '上海',
     district: '浦东',
     distanceKm: 4.9,
+    latitude: 31.2336,
+    longitude: 121.5050,
+    address: '上海市浦东新区世纪大道 100 号',
     sortOrder: 99,
     isActive: false,
   },
@@ -284,6 +296,9 @@ export async function seedDatabaseInTransaction(tx: Prisma.TransactionClient) {
         city: venue.city,
         district: venue.district,
         distanceKm: venue.distanceKm,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        address: venue.address,
         sortOrder: venue.sortOrder,
         isActive: venue.isActive,
       },
@@ -293,6 +308,9 @@ export async function seedDatabaseInTransaction(tx: Prisma.TransactionClient) {
         city: venue.city,
         district: venue.district,
         distanceKm: venue.distanceKm,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        address: venue.address,
         sortOrder: venue.sortOrder,
         isActive: venue.isActive,
         createdAt: seededRecordTimestamp,

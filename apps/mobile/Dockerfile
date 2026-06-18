@@ -12,6 +12,11 @@ WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+# .npmrc carries shamefully-hoist=true so transitive peer deps like
+# @tanstack/vue-query's `vue-demi` get hoisted to the root node_modules
+# and Vite/Rollup can resolve them at H5 build time. Without this the
+# build fails with "Rollup failed to resolve import vue-demi".
+COPY .npmrc ./.npmrc
 COPY apps/api/package.json apps/api/
 COPY apps/admin/package.json apps/admin/
 COPY apps/mobile/package.json apps/mobile/

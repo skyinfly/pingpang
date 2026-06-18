@@ -33,6 +33,25 @@ describe('Auth flow', () => {
     await prisma.user.deleteMany();
   });
 
+  // verifyCode no longer auto-creates users — it returns requiresRegistration
+  // when the phone is unknown. Tests that exercise the login path now need a
+  // user in the database first; this helper mirrors the legacy
+  // buildDevUserData defaults so existing assertions about
+  // nickname=`球友1380013` still hold.
+  async function seedLoginUser(phone = '13800138000') {
+    return prisma.user.upsert({
+      where: { phone },
+      update: {},
+      create: {
+        phone,
+        nickname: `球友${phone.slice(0, 7)}`,
+        city: '上海',
+        level: 'intermediate',
+        creditScore: 100,
+      },
+    });
+  }
+
   it('logs in via WeChat mini-program with the dev mock client', async () => {
     const code = 'mp-wx-code-001';
     const first = await request(app.getHttpServer())
@@ -65,6 +84,7 @@ describe('Auth flow', () => {
 
   it('updates the authenticated user nickname and rejects out-of-range values', async () => {
     const phone = '13800138000';
+    await seedLoginUser(phone);
     const verifyResponse = await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone, code: '123456' })
@@ -90,6 +110,7 @@ describe('Auth flow', () => {
 
   it('returns a public user profile without exposing the phone number', async () => {
     const phone = '13800138000';
+    await seedLoginUser(phone);
     const verifyResponse = await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone, code: '123456' })
@@ -109,6 +130,7 @@ describe('Auth flow', () => {
 
   it('revokes the current session and blocks subsequent token use', async () => {
     const phone = '13800138000';
+    await seedLoginUser(phone);
     await request(app.getHttpServer()).post('/auth/request-code').send({ phone }).expect(201);
     const verifyResponse = await request(app.getHttpServer())
       .post('/auth/verify-code')
@@ -140,6 +162,7 @@ describe('Auth flow', () => {
   });
 
   it('creates a session for a whitelisted OTP code', async () => {
+    await seedLoginUser('13800138000');
     const response = await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone: '13800138000', code: '123456' })
@@ -149,7 +172,158 @@ describe('Auth flow', () => {
     expect(response.body.user.nickname).toBe('球友1380013');
   });
 
+  it('returns requiresRegistration for an unknown phone (no auto-create)', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/verify-code')
+      .send({ phone: '13700137000', code: '123456' })
+      .expect(201);
+
+    expect(response.body).toEqual({ requiresRegistration: true, phone: '13700137000' });
+    expect(response.body.token).toBeUndefined();
+
+    // The phone must not have been silently registered.
+    const user = await prisma.user.findUnique({ where: { phone: '13700137000' } });
+    expect(user).toBeNull();
+  });
+
+  it('registers a new user and auto-issues a session token', async () => {
+    const phone = '13600136000';
+    await request(app.getHttpServer()).post('/auth/request-code').send({ phone }).expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ phone, code: '123456', nickname: '小明', city: '杭州', level: 'advanced' })
+      .expect(201);
+
+    expect(response.body.token.split('.')).toHaveLength(2);
+    expect(response.body.user.nickname).toBe('小明');
+    expect(response.body.user.city).toBe('杭州');
+    expect(response.body.user.level).toBe('advanced');
+    expect(response.body.user.phone).toBe(phone);
+
+    // Auto-login should give a working session straight away.
+    await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${response.body.token}`)
+      .expect(200);
+  });
+
+  it('rejects register when the phone is already in use', async () => {
+    const phone = '13800138000';
+    await seedLoginUser(phone);
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ phone, code: '123456', nickname: '冲突昵称' })
+      .expect(409);
+  });
+
+  // ---- Email + password auth ----
+
+  it('email: register creates account with bcrypt hash + auto-logs in', async () => {
+    const email = 'hello@pingpang.app';
+    const response = await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email, password: 'goodPassword1', nickname: '邮箱小李', city: '深圳', level: 'beginner' })
+      .expect(201);
+
+    expect(response.body.user.email).toBe(email);
+    expect(response.body.user.nickname).toBe('邮箱小李');
+    expect(response.body.user.city).toBe('深圳');
+    expect(response.body.token.split('.')).toHaveLength(2);
+
+    // Hash must be persisted (not the raw password).
+    const stored = await prisma.user.findUnique({ where: { email } });
+    expect(stored?.passwordHash).toMatch(/^\$2[aby]\$/);
+    expect(stored?.passwordHash).not.toBe('goodPassword1');
+
+    await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${response.body.token}`)
+      .expect(200);
+  });
+
+  it('email: rejects register when email already in use', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'dup@pingpang.app', password: 'goodPassword1', nickname: 'A' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'dup@pingpang.app', password: 'otherPassword2', nickname: 'B' })
+      .expect(409);
+  });
+
+  it('email: login with correct password returns a session', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'returning@pingpang.app', password: 'goodPassword1', nickname: '回归球友' })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/email/login')
+      .send({ email: 'returning@pingpang.app', password: 'goodPassword1' })
+      .expect(201);
+    expect(response.body.token.split('.')).toHaveLength(2);
+    expect(response.body.user.nickname).toBe('回归球友');
+    // passwordHash must never leak to the client.
+    expect(response.body.user.passwordHash).toBeUndefined();
+  });
+
+  it('email: login with wrong password returns 401 invalid_password', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'wrongpw@pingpang.app', password: 'goodPassword1', nickname: 'wp' })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/email/login')
+      .send({ email: 'wrongpw@pingpang.app', password: 'badPassword2' })
+      .expect(401);
+    expect(response.body.message).toBe('invalid_password');
+  });
+
+  it('email: login with unknown email returns 401 user_not_found', async () => {
+    // Product wants friendly copy on the H5, so we distinguish the two
+    // 401 branches via the message field while keeping the status code
+    // uniform (and we still run a dummy bcrypt to keep timing similar).
+    const response = await request(app.getHttpServer())
+      .post('/auth/email/login')
+      .send({ email: 'nobody@pingpang.app', password: 'goodPassword1' })
+      .expect(401);
+    expect(response.body.message).toBe('user_not_found');
+  });
+
+  it('email: rejects an invalid email format with 400', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'not-an-email', password: 'goodPassword1', nickname: 'x' })
+      .expect(400);
+  });
+
+  it('email: rejects a too-short password with 400', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'short@pingpang.app', password: 'short', nickname: 'short' })
+      .expect(400);
+  });
+
+  it('email: comparison is case-insensitive', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/email/register')
+      .send({ email: 'MIXED@PingPang.APP', password: 'goodPassword1', nickname: '大写测试' })
+      .expect(201);
+
+    // Login with a different casing should resolve to the same user.
+    const response = await request(app.getHttpServer())
+      .post('/auth/email/login')
+      .send({ email: 'mixed@pingpang.app', password: 'goodPassword1' })
+      .expect(201);
+    expect(response.body.user.nickname).toBe('大写测试');
+  });
+
   it('rejects an invalid OTP code', async () => {
+    await seedLoginUser('13800138000');
     await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone: '13800138000', code: '000000' })
@@ -164,6 +338,7 @@ describe('Auth flow', () => {
   });
 
   it('returns the seeded profile for a valid token', async () => {
+    await seedLoginUser('13800138000');
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone: '13800138000', code: '123456' })
@@ -194,6 +369,7 @@ describe('Auth flow', () => {
   });
 
   it('derives identity from the bearer token instead of trusting the query userId', async () => {
+    await seedLoginUser('13800138000');
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone: '13800138000', code: '123456' })
@@ -217,6 +393,7 @@ describe('Auth flow', () => {
   });
 
   it('persists the session user and reads the profile from the database', async () => {
+    await seedLoginUser('13800138000');
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/verify-code')
       .send({ phone: '13800138000', code: '123456' })

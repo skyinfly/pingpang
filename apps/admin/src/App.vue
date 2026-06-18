@@ -18,6 +18,7 @@ import {
   resolveAdminApiBaseUrl,
 } from './services/admin-api';
 import { DEFAULT_ADMIN_TOKEN, getStoredAdminToken, saveAdminToken } from './services/admin-token';
+import EChart from './components/EChart.vue';
 
 type TabKey = 'analytics' | 'applications' | 'matches' | 'users' | 'venues' | 'reviews' | 'reports';
 type EditorState = {
@@ -281,6 +282,86 @@ function formatDelta(value: number) {
 function shortDate(value: string) {
   const [, month, day] = value.split('-');
   return `${Number(month)}/${Number(day)}`;
+}
+
+/**
+ * Build an ECharts option for a daily-bucket timeline. Single smoothed line
+ * with area gradient so a "growth" trend is visually obvious even when the
+ * absolute numbers are small (which they often are early in launch).
+ */
+function timelineLineOption(timeline: AnalyticsTimeline | null, color: string, label: string) {
+  const buckets = timeline?.buckets ?? [];
+  return {
+    grid: { left: 36, right: 16, top: 24, bottom: 32 },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: buckets.map((b) => shortDate(b.date)),
+      axisLabel: { color: '#7a8699', fontSize: 11 },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: '#7a8699', fontSize: 11 },
+      splitLine: { lineStyle: { color: 'rgba(15,28,46,0.06)' } },
+    },
+    series: [
+      {
+        name: label,
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { width: 2, color },
+        itemStyle: { color },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: `${color}55` },
+              { offset: 1, color: `${color}00` },
+            ],
+          },
+        },
+        data: buckets.map((b) => b.count),
+      },
+    ],
+  } as const;
+}
+
+/**
+ * Pie chart of pending vs approved vs rejected applications. Sourced from
+ * the overview totals so we don't make another round-trip.
+ */
+function applicationsPieOption(overview: AnalyticsOverview | null) {
+  const totals = overview?.totals ?? { applications: 0 };
+  const approvalRate = overview?.operations?.approvalRate ?? 0;
+  // approval rate is 0..1. Derive approximate buckets — we don't have the
+  // raw counts split out, so approve = total * rate, rest is "其他".
+  const approved = Math.round(totals.applications * approvalRate);
+  const others = Math.max(totals.applications - approved, 0);
+  return {
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: { bottom: 0, left: 'center', textStyle: { color: '#4a5670', fontSize: 12 } },
+    series: [
+      {
+        type: 'pie',
+        radius: ['58%', '78%'],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+        label: { show: false },
+        data: [
+          { name: '已通过', value: approved, itemStyle: { color: '#22c55e' } },
+          { name: '待处理 / 拒绝', value: others, itemStyle: { color: '#ff8f57' } },
+        ],
+      },
+    ],
+  } as const;
 }
 
 async function resolveReport(reportId: string, status: 'reviewed' | 'dismissed') {
@@ -989,38 +1070,31 @@ onMounted(() => {
 
             <article class="analytics-card analytics-card--span2">
               <h3>球局趋势（近 {{ matchTimeline?.days ?? 0 }} 天，共 {{ timelineSum(matchTimeline) }} 局）</h3>
-              <div v-if="matchTimeline" class="chart-bars">
-                <div
-                  v-for="bucket in matchTimeline.buckets"
-                  :key="bucket.date"
-                  class="chart-bar"
-                  :title="`${bucket.date}: ${bucket.count}`"
-                >
-                  <div
-                    class="chart-bar-fill"
-                    :style="`height: ${timelineMax(matchTimeline) ? (bucket.count / timelineMax(matchTimeline)) * 100 : 0}%`"
-                  ></div>
-                  <span class="chart-bar-label">{{ shortDate(bucket.date) }}</span>
-                </div>
-              </div>
+              <EChart
+                v-if="matchTimeline"
+                :option="timelineLineOption(matchTimeline, '#FF6A3D', '球局')"
+                :height="220"
+                data-testid="chart-matches"
+              />
             </article>
 
             <article class="analytics-card analytics-card--span2">
               <h3>球友新增趋势（近 {{ userTimeline?.days ?? 0 }} 天，共 {{ timelineSum(userTimeline) }} 人）</h3>
-              <div v-if="userTimeline" class="chart-bars chart-bars--users">
-                <div
-                  v-for="bucket in userTimeline.buckets"
-                  :key="bucket.date"
-                  class="chart-bar"
-                  :title="`${bucket.date}: ${bucket.count}`"
-                >
-                  <div
-                    class="chart-bar-fill chart-bar-fill--users"
-                    :style="`height: ${timelineMax(userTimeline) ? (bucket.count / timelineMax(userTimeline)) * 100 : 0}%`"
-                  ></div>
-                  <span class="chart-bar-label">{{ shortDate(bucket.date) }}</span>
-                </div>
-              </div>
+              <EChart
+                v-if="userTimeline"
+                :option="timelineLineOption(userTimeline, '#3B82F6', '新球友')"
+                :height="220"
+                data-testid="chart-users"
+              />
+            </article>
+
+            <article class="analytics-card">
+              <h3>申请处理结果（累计 {{ analyticsOverview.totals.applications }} 条）</h3>
+              <EChart
+                :option="applicationsPieOption(analyticsOverview)"
+                :height="220"
+                data-testid="chart-applications"
+              />
             </article>
 
             <article class="analytics-card">

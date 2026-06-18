@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="pingpang app icon">
+  <!-- Background: warm orange squircle, matching brand CSS (#ff6a3d -> #ff8f57). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6a3d"/>
+      <stop offset="100%" stop-color="#ff8f57"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#fff9f1"/>
+      <stop offset="100%" stop-color="#f0d9b7"/>
+    </radialGradient>
+    <linearGradient id="blade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff5e6"/>
+      <stop offset="100%" stop-color="#ffd9b0"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7a3a1d"/>
+      <stop offset="100%" stop-color="#5a2810"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="6"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- iOS-style squircle background. -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!-- Paddle, rotated 32 degrees so it reads like a dynamic swing. -->
+  <g transform="translate(256 268) rotate(-32)" filter="url(#softShadow)">
+    <!-- Handle: chunky wood grip. -->
+    <rect x="-22" y="60" width="44" height="140" rx="18" fill="url(#handle)"/>
+    <!-- Grip stitching highlight. -->
+    <rect x="-12" y="90" width="24" height="6" rx="3" fill="#fff" opacity="0.18"/>
+    <rect x="-12" y="120" width="24" height="6" rx="3" fill="#fff" opacity="0.18"/>
+    <rect x="-12" y="150" width="24" height="6" rx="3" fill="#fff" opacity="0.18"/>
+    <!-- Blade back (rubber, red side as in standard paddles). -->
+    <ellipse cx="0" cy="0" rx="120" ry="135" fill="#c1351b"/>
+    <!-- Blade front (cream face). -->
+    <ellipse cx="0" cy="-8" rx="112" ry="127" fill="url(#blade)"/>
+    <!-- Subtle highlight on blade face. -->
+    <ellipse cx="-32" cy="-48" rx="40" ry="28" fill="#ffffff" opacity="0.35"/>
+  </g>
+
+  <!-- Ping-pong ball: bouncing off the top-right of the paddle. -->
+  <g filter="url(#softShadow)">
+    <circle cx="360" cy="156" r="46" fill="url(#ball)"/>
+    <!-- Spec highlight. -->
+    <circle cx="346" cy="142" r="12" fill="#ffffff" opacity="0.7"/>
+  </g>
+
+  <!-- Motion arc hinting at a swing, very faint. -->
+  <path d="M 380 200 Q 300 110 200 130" fill="none" stroke="#ffffff" stroke-width="6"
+        stroke-linecap="round" stroke-dasharray="4 14" opacity="0.45"/>
+</svg>

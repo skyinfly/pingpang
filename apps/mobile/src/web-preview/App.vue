@@ -11,10 +11,17 @@ import CreateMatchPage from '../pages/create-match/index.vue';
 import ChatPage from '../pages/chat/index.vue';
 import UserProfilePage from '../pages/user-profile/index.vue';
 import EditProfilePage from '../pages/edit-profile/index.vue';
+import HistoryMatchesPage from '../pages/history-matches/index.vue';
+import LegalPrivacyPage from '../pages/legal/privacy.vue';
+import LegalTermsPage from '../pages/legal/terms.vue';
 import { getWebPreviewRoute } from './route';
 
 const route = ref(getWebPreviewRoute());
 
+// IMPORTANT: every route declared in pages.json must show up here too —
+// the WebPreviewApp falls back to HomePage on an unknown path, which is
+// what made `/pages/legal/privacy` and `/pages/legal/terms` silently land
+// on the home tab when users tapped the consent links.
 const views = {
   '/pages/home/index': HomePage,
   '/pages/square/index': SquarePage,
@@ -26,9 +33,28 @@ const views = {
   '/pages/chat/index': ChatPage,
   '/pages/user-profile/index': UserProfilePage,
   '/pages/edit-profile/index': EditProfilePage,
+  '/pages/history-matches/index': HistoryMatchesPage,
+  '/pages/legal/privacy': LegalPrivacyPage,
+  '/pages/legal/terms': LegalTermsPage,
 };
 
 const currentView = computed(() => views[route.value.path as keyof typeof views] ?? HomePage);
+
+// Dev-only guard: if pages.json declares a route that isn't wired into the
+// preview shell's `views` map above, surface it loudly instead of silently
+// falling back to Home (which is what made the legal pages misroute).
+if (typeof console !== 'undefined') {
+  for (const page of appPages.pages) {
+    const path = `/${page.path}`;
+    if (!(path in views)) {
+      console.warn(
+        `[web-preview] route ${path} declared in pages.json but missing from App.vue views map; ` +
+          'navigateTo will silently land on home.',
+      );
+    }
+  }
+}
+
 const pageMeta = new Map(appPages.pages.map((page) => [`/${page.path}`, page.style]));
 const tabItems = appPages.tabBar.list.map((item) => ({
   path: `/${item.pagePath}`,
@@ -43,11 +69,54 @@ const navbarTitle = computed(() => {
 });
 
 function syncRoute() {
-  route.value = getWebPreviewRoute();
+  const next = getWebPreviewRoute();
+  const pathChanged = next.path !== route.value.path;
+  route.value = next;
+  // Hash-driven path changes (back/forward, deep-link, programmatic
+  // tab switch) all funnel through this — keep scroll reset hooked
+  // here so it's not just tied to the manual tab-tap path above.
+  if (pathChanged) resetAllScrolls();
+}
+
+/**
+ * Reset every scroll container we know about. Called when the tab
+ * route changes. Fires three times — synchronously, on the next
+ * animation frame, and on the next macrotask — because uni-app's
+ * H5 polyfill sometimes restores the scroll position itself after
+ * the route change, and a single sync call gets clobbered.
+ */
+function resetAllScrolls() {
+  const apply = () => {
+    if (typeof globalThis.scrollTo === 'function') {
+      globalThis.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    const containers = globalThis.document?.querySelectorAll?.(
+      '.preview-content, uni-scroll-view, [data-tab-scroll]',
+    );
+    containers?.forEach((el) => {
+      if ('scrollTop' in el) (el as HTMLElement).scrollTop = 0;
+    });
+    if (globalThis.document?.documentElement) {
+      globalThis.document.documentElement.scrollTop = 0;
+    }
+    if (globalThis.document?.body) {
+      globalThis.document.body.scrollTop = 0;
+    }
+  };
+  apply();
+  if (typeof globalThis.requestAnimationFrame === 'function') {
+    globalThis.requestAnimationFrame(apply);
+  }
+  if (typeof globalThis.setTimeout === 'function') {
+    globalThis.setTimeout(apply, 0);
+    // Final pass once Vue's flush has run + the new view painted.
+    globalThis.setTimeout(apply, 50);
+  }
 }
 
 function switchTab(path: string) {
   globalThis.location.hash = path;
+  resetAllScrolls();
 }
 
 function goBack() {

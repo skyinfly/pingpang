@@ -9,27 +9,39 @@ const uni = (
     : (uniModule as unknown as { default: UniFactory }).default
 ) as UniFactory;
 
-// 把 uniapp 的 rpx 单位转为 px（H5 浏览器预览专用）
-// 按 750rpx 设计稿对应 375px viewport：1rpx = 0.5px
-function rpxToPx() {
-  return {
-    postcssPlugin: 'rpx-to-px',
-    Declaration(decl: { value: string }) {
-      if (typeof decl.value !== 'string' || !decl.value.includes('rpx')) return;
-      decl.value = decl.value.replace(/(-?\d*\.?\d+)rpx/g, (_, n) => {
-        const px = Number(n) * 0.5;
-        return `${px}px`;
-      });
-    },
-  };
-}
-rpxToPx.postcss = true;
+/**
+ * uni-app's H5 build emits raw `rpx` units. Browsers ignore the unknown
+ * unit, so without runtime patching every margin/padding/font-size silently
+ * drops to 0 and the page looks unstyled. Convert rpx -> vw at build time
+ * using uni-app's 750-rpx design width: 1rpx == 100vw / 750.
+ *
+ * Shape note: PostCSS plugins are registered as `() => pluginObject` with
+ * a `postcss = true` marker on the factory. Returning a plain object (as
+ * earlier revisions did) confused PostCSS's normalizer when Vite tried to
+ * pass scoped Vue SFC styles through the pipeline during vitest runs.
+ */
+type DeclarationNode = { value: string };
+const rpxRegex = /(-?\d+(?:\.\d+)?)rpx/g;
+const rpxToVw = (): {
+  postcssPlugin: string;
+  Declaration: (decl: DeclarationNode) => void;
+} => ({
+  postcssPlugin: 'pingpang-rpx-to-vw',
+  Declaration(decl) {
+    if (!decl.value || decl.value.indexOf('rpx') === -1) return;
+    decl.value = decl.value.replace(
+      rpxRegex,
+      (_match, raw) => `${(parseFloat(raw) / 7.5).toFixed(4)}vw`,
+    );
+  },
+});
+(rpxToVw as unknown as { postcss: boolean }).postcss = true;
 
 export default defineConfig({
   plugins: [uni()],
   css: {
     postcss: {
-      plugins: [rpxToPx()],
+      plugins: [rpxToVw() as never],
     },
   },
   test: {

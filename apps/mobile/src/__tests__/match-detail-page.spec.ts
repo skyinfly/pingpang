@@ -1268,6 +1268,12 @@ describe('MatchDetailPage', () => {
       setStorageSync: vi.fn(),
       getStorageSync: vi.fn(() => ''),
       removeStorageSync: vi.fn(),
+      // The disband button now opens a confirmation modal before hitting
+      // /cancel. Auto-confirm so the rest of the flow runs.
+      showModal: vi.fn(({ success }: { success?: (res: { confirm: boolean }) => void }) => {
+        success?.({ confirm: true });
+      }),
+      showToast: vi.fn(),
     });
 
     authStore.setSession({
@@ -1289,10 +1295,18 @@ describe('MatchDetailPage', () => {
     });
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('取消这场球局');
+      // Copy updated: button now reads "解散约球" with a confirmation modal.
+      expect(wrapper.text()).toContain('解散约球');
     });
 
     await wrapper.get('[data-testid="cancel-hosted-match"]').trigger('click');
+
+    // Custom AppModal renders a confirm dialog before the cancel call;
+    // click "confirm" to proceed.
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="modal-confirm"]').exists()).toBe(true);
+    });
+    await wrapper.get('[data-testid="modal-confirm"]').trigger('click');
 
     await vi.waitFor(() => {
       expect(wrapper.find('[data-testid="cancel-hosted-match"]').exists()).toBe(false);

@@ -4,6 +4,7 @@ import type {
   ChatThreadDetail,
   ChatThreadSummary,
   CreateMatchPayload,
+  LoginEmailPayload,
   MatchApplication,
   MatchCard,
   MatchListResponse,
@@ -13,6 +14,8 @@ import type {
   MessagePreview,
   MessageSummary,
   PublicUserProfile,
+  RegisterEmailPayload,
+  RegisterPayload,
   ReviewProfile,
   SubmitReviewPayload,
   SubmitReviewResponse,
@@ -23,6 +26,7 @@ import type {
   UploadResponse,
   ThreadMessagesResponse,
   ThreadReadResponse,
+  VerifyCodeResponse,
 } from './types';
 
 function withAuthHeaders(headers: Record<string, string> = {}) {
@@ -53,9 +57,140 @@ export function requestLoginCode(phone: string) {
 }
 
 export function verifyLoginCode(phone: string, code: string) {
-  return http<SessionPayload>('/auth/verify-code', {
+  // Response is union-typed: existing users get { token, user }; new
+  // numbers get { requiresRegistration: true, phone } so the caller can
+  // route into the register form without prompting for a fresh SMS.
+  return http<VerifyCodeResponse>('/auth/verify-code', {
     method: 'POST',
     data: { phone, code },
+  });
+}
+
+export function registerUser(payload: RegisterPayload) {
+  return http<SessionPayload>('/auth/register', {
+    method: 'POST',
+    data: payload,
+  });
+}
+
+// ---- Email + password auth (H5) ----
+
+export function registerEmailUser(payload: RegisterEmailPayload) {
+  return http<SessionPayload>('/auth/email/register', {
+    method: 'POST',
+    data: payload,
+  });
+}
+
+export function loginEmailUser(payload: LoginEmailPayload) {
+  return http<SessionPayload>('/auth/email/login', {
+    method: 'POST',
+    data: payload,
+  });
+}
+
+/**
+ * IP-based geolocation fallback. The store calls this when the browser
+ * geolocation API isn't usable (HTTP origin, denied permission, missing
+ * sensor) so we can still show a sensible city in the header. Always
+ * resolves — returns { available: false } when ip-api couldn't help.
+ */
+export type IpLocation =
+  | { available: true; lat: number; lng: number; city: string | null; country: string | null; source: 'ip'; ip: string }
+  | { available: false };
+
+export function lookupLocationByIp() {
+  return http<IpLocation>('/location/ip');
+}
+
+/**
+ * Reverse-geocode GCJ-02 coords (from browser/wechat GPS) to a Chinese
+ * street/POI address. Backed by AMap on the server. Coords are passed
+ * with 6-decimal precision — AMap rejects anything finer.
+ */
+export type ReverseLocation =
+  | {
+      available: true;
+      province: string | null;
+      city: string | null;
+      district: string | null;
+      township: string | null;
+      street: string | null;
+      formattedAddress: string;
+      nearestPoi: string | null;
+    }
+  | { available: false };
+
+export function reverseLookupLocation(coords: { lat: number; lng: number }) {
+  const query = buildQuery({ lat: coords.lat.toFixed(6), lng: coords.lng.toFixed(6) });
+  return http<ReverseLocation>(`/location/reverse?${query}`);
+}
+
+export type PoiHit = {
+  amapPoiId: string;
+  name: string;
+  address: string;
+  city: string;
+  district: string | null;
+  lat: number;
+  lng: number;
+  distanceMeters: number | null;
+  category: string | null;
+};
+
+/**
+ * Search nearby venues via the AMap-backed POI endpoint. With no
+ * keyword the backend returns 乒乓球馆 (table-tennis halls) by default.
+ */
+export function searchVenuePois(args: {
+  lat: number;
+  lng: number;
+  keyword?: string;
+  radiusMeters?: number;
+}) {
+  const query = buildQuery({
+    lat: args.lat.toFixed(6),
+    lng: args.lng.toFixed(6),
+    keyword: args.keyword,
+    radiusMeters: args.radiusMeters != null ? String(args.radiusMeters) : undefined,
+  });
+  return http<{ items: PoiHit[] }>(`/location/poi/search?${query}`);
+}
+
+export type UpsertedVenue = {
+  id: string;
+  name: string;
+  city: string;
+  district: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  courts: Array<{ id: string; name: string; sortOrder: number }>;
+  timeSlots: Array<{
+    slotId: string;
+    id: string;
+    venueId: string;
+    venueName: string;
+    label: string;
+    startTime: string;
+    endTime: string;
+    sortOrder: number;
+  }>;
+};
+
+export function upsertVenueFromPoi(poi: PoiHit) {
+  return http<UpsertedVenue>('/matches/venues/from-poi', {
+    method: 'POST',
+    data: {
+      amapPoiId: poi.amapPoiId,
+      name: poi.name,
+      city: poi.city,
+      district: poi.district ?? undefined,
+      address: poi.address,
+      lat: poi.lat,
+      lng: poi.lng,
+    },
+    headers: withAuthHeaders(),
   });
 }
 
@@ -113,8 +248,16 @@ export function fetchPublicProfile(userId: string) {
   return http<PublicUserProfile>(`/users/${encodeURIComponent(userId)}`);
 }
 
-export function listMatches(filters: { city?: string; level?: string } = {}) {
-  const query = buildQuery(filters);
+export function listMatches(
+  filters: { city?: string; level?: string; lat?: number; lng?: number; radiusKm?: number } = {},
+) {
+  const query = buildQuery({
+    city: filters.city,
+    level: filters.level,
+    lat: filters.lat != null ? String(filters.lat) : undefined,
+    lng: filters.lng != null ? String(filters.lng) : undefined,
+    radiusKm: filters.radiusKm != null ? String(filters.radiusKm) : undefined,
+  });
   return http<MatchListResponse>(query ? `/matches?${query}` : '/matches');
 }
 
@@ -158,17 +301,31 @@ export function rejectHostedApplication(matchId: string, applicationId: string, 
   });
 }
 
-export function fetchMatchById(id: string) {
-  return http<MatchCard>(`/matches/${encodeURIComponent(id)}`);
+export function fetchMatchById(id: string, location?: { lat: number; lng: number }) {
+  const query = location
+    ? `?${buildQuery({ lat: String(location.lat), lng: String(location.lng) })}`
+    : '';
+  return http<MatchCard>(`/matches/${encodeURIComponent(id)}${query}`);
 }
 
-export function fetchMatchOptions() {
-  return http<MatchOptionsResponse>('/match-options');
+export function fetchMatchOptions(location?: { lat: number; lng: number }) {
+  const query = location
+    ? `?${buildQuery({ lat: String(location.lat), lng: String(location.lng) })}`
+    : '';
+  return http<MatchOptionsResponse>(`/match-options${query}`);
 }
 
 export function createMatch(payload: CreateMatchPayload) {
   return http<MatchCard>('/matches', {
     method: 'POST',
+    data: payload,
+    headers: withAuthHeaders(),
+  });
+}
+
+export function updateHostedMatch(matchId: string, payload: { courtName?: string }) {
+  return http<MatchCard>(`/matches/${encodeURIComponent(matchId)}`, {
+    method: 'PATCH',
     data: payload,
     headers: withAuthHeaders(),
   });
@@ -190,6 +347,17 @@ export function cancelHostedMatch(matchId: string, reason?: string) {
   });
 }
 
+/**
+ * Hard delete a match record. The backend refuses if the match is still
+ * live or has joined members; safe to call on cancelled / abandoned ones.
+ */
+export function deleteHostedMatch(matchId: string) {
+  return http<{ ok: true; id: string }>(`/matches/${encodeURIComponent(matchId)}`, {
+    method: 'DELETE',
+    headers: withAuthHeaders(),
+  });
+}
+
 export function fetchMessageSummary() {
   return http<MessageSummary>('/messages/summary', {
     headers: withAuthHeaders(),
@@ -199,6 +367,22 @@ export function fetchMessageSummary() {
 export function listMessages(filters: { kind?: string; matchId?: string } = {}) {
   const query = buildQuery(filters);
   return http<{ items: MessagePreview[] }>(query ? `/messages?${query}` : '/messages', {
+    headers: withAuthHeaders(),
+  });
+}
+
+export function markMessagesRead(filters: { kind?: string; matchId?: string } = {}) {
+  return http<{ updatedCount: number }>('/messages/read', {
+    method: 'POST',
+    data: filters,
+    headers: withAuthHeaders(),
+  });
+}
+
+export function clearMessages(filters: { kind?: string } = {}) {
+  const query = buildQuery(filters);
+  return http<{ deletedCount: number }>(query ? `/messages?${query}` : '/messages', {
+    method: 'DELETE',
     headers: withAuthHeaders(),
   });
 }
@@ -301,6 +485,9 @@ export function reportUser(payload: { targetUserId: string; reason: string; matc
 export const apiClient = {
   requestLoginCode,
   verifyLoginCode,
+  registerUser,
+  registerEmailUser,
+  loginEmailUser,
   loginWithWechat,
   fetchMyProfile,
   updateMyProfile,
@@ -316,8 +503,10 @@ export const apiClient = {
   fetchMatchById,
   fetchMatchOptions,
   createMatch,
+  updateHostedMatch,
   applyToMatch,
   cancelHostedMatch,
+  deleteHostedMatch,
   fetchMessageSummary,
   listMessages,
   listChatThreads,

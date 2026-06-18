@@ -14,13 +14,24 @@ import {
   reportUser,
   submitMatchCheckIn,
   submitReview,
+  updateHostedMatch,
 } from '../../services/api';
 import type { HostedMatchApplication, MatchCard, MyMatchApplicationStatus } from '../../services/types';
 import { useAuthStore } from '../../stores/auth';
+import { useLocationStore } from '../../stores/location';
 import { formatLevel } from '../../utils/copy';
+import { formatDistance } from '../../utils/geo';
+import { toast, modal } from '../../utils/toast';
 import { useJoinedMatchesQuery } from '../../composables/useJoinedMatchesQuery';
+import { resolveApiBaseUrl } from '../../services/http';
+import AppToast from '../../components/AppToast.vue';
+import AppModal from '../../components/AppModal.vue';
 
 const authStore = useAuthStore();
+const locationStore = useLocationStore();
+// Warm location cache so the next loadMatch() can ask the backend for a
+// live-computed distance instead of the stored default.
+void locationStore.ensure();
 const activeUserId = computed(() => authStore.user?.id ?? '');
 const joinedMatchesQuery = useJoinedMatchesQuery(activeUserId);
 
@@ -61,6 +72,39 @@ const memberReviewTags = ref<Record<string, string[]>>({});
 const memberReviewSubmitting = ref<Record<string, boolean>>({});
 const memberReviewDone = ref<Record<string, boolean>>({});
 const memberReviewError = ref<Record<string, string>>({});
+
+// Court label is editable post-creation by the host (see PATCH /matches/:id
+// on the API). The page-level draft + busy state lives here so the
+// "现场球台" panel can render independent of other forms.
+const courtNameDraft = ref('');
+const courtNameSaving = ref(false);
+const courtNameError = ref('');
+const courtNameToast = ref('');
+function currentCourtSuffix() {
+  // venueName looks like "<venue> · <courtLabel>" — extract the tail.
+  const parts = (match.value?.venueName ?? '').split(' · ');
+  return parts.length > 1 ? parts.slice(1).join(' · ') : '';
+}
+async function saveCourtName() {
+  if (!match.value || !isHost.value || courtNameSaving.value) return;
+  courtNameError.value = '';
+  courtNameToast.value = '';
+  courtNameSaving.value = true;
+  try {
+    const updated = await updateHostedMatch(match.value.id, {
+      courtName: courtNameDraft.value.trim(),
+    });
+    match.value = updated;
+    courtNameDraft.value = currentCourtSuffix();
+    courtNameToast.value = '球台号已更新';
+    toast('球台号已更新', 'success');
+  } catch {
+    courtNameError.value = '保存失败，请稍后再试';
+    toast('保存失败，请稍后再试', 'error');
+  } finally {
+    courtNameSaving.value = false;
+  }
+}
 
 const reviewTagOptions = [
   { value: 'on_time', label: '准时到场' },
@@ -272,7 +316,11 @@ async function loadMatch(id: string) {
   joinError.value = '';
 
   try {
-    match.value = await fetchMatchById(id);
+    // Pass user coords (if cached) so the backend can compute live distance
+    // and stamp venue lat/lng on the response for the map card below.
+    const coords = locationStore.coords ?? undefined;
+    match.value = await fetchMatchById(id, coords ?? undefined);
+    courtNameDraft.value = currentCourtSuffix();
   } catch {
     failed.value = true;
     match.value = null;
@@ -329,8 +377,24 @@ async function handleJoin() {
       matchId: match.value.id,
       userId: authStore.user?.id,
     };
-  } catch {
-    joinError.value = '申请失败，请稍后再试。';
+    toast('已申请加入，等待主理人确认', 'success');
+  } catch (error) {
+    const resp = error as {
+      statusCode?: number;
+      data?: { message?: string; conflictWith?: { title?: string; roleLabel?: string } };
+    };
+    const msg = typeof resp.data?.message === 'string' ? resp.data.message : '';
+    if (resp.statusCode === 409 && msg === 'match_time_conflict') {
+      const c = resp.data?.conflictWith;
+      const friendly = c?.title
+        ? `这个时间和${c.roleLabel ?? ''}「${c.title}」冲突，无法加入`
+        : '这个时间和你已有的球局冲突，无法加入';
+      joinError.value = friendly;
+      toast(friendly, 'error');
+    } else {
+      joinError.value = '申请失败，请稍后再试。';
+      toast('申请失败，请稍后再试', 'error');
+    }
   } finally {
     submitting.value = false;
   }
@@ -571,6 +635,55 @@ async function submitMemberCheckIn() {
   }
 }
 
+const calendarHint = ref('');
+
+function openVenueNavigation() {
+  if (!match.value || match.value.venueLatitude == null || match.value.venueLongitude == null) return;
+  const lat = match.value.venueLatitude;
+  const lng = match.value.venueLongitude;
+  const name = match.value.venueName;
+  const address = match.value.venueAddress ?? match.value.venueName;
+  // #ifdef MP-WEIXIN
+  // Hands off to WeChat's built-in map sheet which offers 高德/腾讯/苹果地图.
+  uni.openLocation({ latitude: lat, longitude: lng, name, address, scale: 16 });
+  // #endif
+  // #ifndef MP-WEIXIN
+  // H5: open Tencent Maps' web URL scheme in a new tab. Works on both
+  // desktop and mobile browsers; the user can pick "导航" once it loads.
+  const url = `https://apis.map.qq.com/uri/v1/marker?marker=coord:${lat},${lng};title:${encodeURIComponent(name)};addr:${encodeURIComponent(address)}&referer=pingpang`;
+  if (typeof window !== 'undefined') window.open(url, '_blank');
+  // #endif
+}
+
+function downloadCalendar() {
+  if (!match.value) return;
+  calendarHint.value = '';
+  const base = resolveApiBaseUrl();
+  const url = `${base}/matches/${encodeURIComponent(match.value.id)}/calendar.ics`;
+  // #ifdef MP-WEIXIN
+  // Mini-programs can't trigger file downloads; we copy the link and tell
+  // the user to open it in the browser to get the .ics.
+  uni.setClipboardData({
+    data: url,
+    success: () => {
+      uni.showToast({ title: '日历链接已复制，浏览器中打开即可加入', icon: 'none' });
+    },
+  });
+  // #endif
+  // #ifndef MP-WEIXIN
+  if (typeof window !== 'undefined') {
+    // Use an <a download> link so the browser saves the file instead of
+    // navigating to it. Filename uses the match id for traceability.
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = `pingpang-${match.value.id}.ics`;
+    window.document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  // #endif
+}
+
 function shareMatch() {
   if (!match.value) {
     return;
@@ -642,9 +755,27 @@ async function submitReport() {
 }
 
 async function handleCancelMatch() {
-  if (!match.value || cancelling.value) {
-    return;
-  }
+  if (!match.value || cancelling.value) return;
+
+  // Two-step destructive action. Tell the host exactly how many people
+  // will be notified so they don't disband a match by reflex.
+  const approved = hostedApplications.value.filter((item) => item.status === 'approved').length;
+  const pending = hostedApplications.value.filter((item) => item.status === 'pending').length;
+  const affected = approved + pending;
+  const lines = [
+    `「${match.value.title}」解散后无法恢复。`,
+    affected > 0
+      ? `${approved} 位已通过的球友 + ${pending} 位申请中的球友会收到系统通知。`
+      : '目前还没有球友加入，可以放心解散。',
+  ];
+  const confirmed = await modal({
+    title: '解散这场约球？',
+    content: lines.join('\n'),
+    confirmText: '确认解散',
+    cancelText: '再想想',
+    showCancel: true,
+  });
+  if (!confirmed.confirm) return;
 
   cancelError.value = '';
   cancelling.value = true;
@@ -655,8 +786,35 @@ async function handleCancelMatch() {
     hostedApplications.value = hostedApplications.value.map((item) =>
       item.status === 'pending' ? { ...item, status: 'rejected' as const } : item,
     );
-  } catch {
-    cancelError.value = '取消失败，请检查网络或稍后再试。';
+    toast('已解散这场约球', 'success');
+  } catch (error) {
+    // Surface the backend's actual reason so the user knows *why* — most
+    // failures here are 409 "match already started" or "already
+    // cancelled", both of which the user can resolve by refreshing.
+    const resp = error as { statusCode?: number; data?: { message?: string } };
+    const status = resp.statusCode ?? 0;
+    const serverMessage =
+      typeof resp.data?.message === 'string'
+        ? resp.data.message
+        : Array.isArray(resp.data?.message)
+        ? resp.data.message.join('；')
+        : '';
+    let friendly = '解散失败，请稍后再试';
+    if (status === 409 && /already cancelled/i.test(serverMessage)) {
+      friendly = '这场球局已经被解散过了，刷新一下页面';
+    } else if (status === 409 && /already started/i.test(serverMessage)) {
+      friendly = '球局已经开始，无法再解散';
+    } else if (status === 403) {
+      friendly = '只有主理人能解散这场球局';
+    } else if (status === 401) {
+      friendly = '登录状态已失效，请重新登录后再试';
+    } else if (serverMessage) {
+      // Last-resort fallback: show the server message verbatim so we
+      // don't silently swallow whatever went wrong in a new edge case.
+      friendly = `解散失败：${serverMessage}`;
+    }
+    cancelError.value = friendly;
+    toast(friendly, 'error');
   } finally {
     cancelling.value = false;
   }
@@ -745,8 +903,44 @@ if (initialMatchId) {
       <view class="panel">
         <text class="panel-label">推荐理由</text>
         <text class="panel-value">
-          距离 {{ match.distanceKm }}km，匹配度 {{ match.matchRate }}%，主理人信用 {{ match.hostCreditScore }}
+          距离 {{ formatDistance(match.distanceKm) }}，匹配度 {{ match.matchRate }}%，主理人信用 {{ match.hostCreditScore }}
         </text>
+      </view>
+
+      <!-- Venue location card. Falls back gracefully when geo isn't on
+           the match (legacy data or non-location-aware caller). -->
+      <view v-if="match.venueLatitude != null && match.venueLongitude != null" class="panel">
+        <text class="panel-label">场馆位置</text>
+        <text class="panel-value">{{ match.venueAddress || match.venueName }}</text>
+        <view class="venue-map" data-testid="venue-map-card">
+          <!-- Native <map> inside mp-weixin renders a real Tencent map
+               with the host's lat/lng; H5 builds skip the component so we
+               render a "tap to navigate" affordance instead. -->
+          <!-- #ifdef MP-WEIXIN -->
+          <map
+            class="venue-map-canvas"
+            :latitude="match.venueLatitude"
+            :longitude="match.venueLongitude"
+            :markers="[{ id: 1, latitude: match.venueLatitude, longitude: match.venueLongitude, width: 28, height: 36 }]"
+            scale="15"
+          />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <view class="venue-map-placeholder">
+            <text class="venue-map-pin">📍</text>
+            <text class="venue-map-hint">{{ match.venueAddress || match.venueName }}</text>
+          </view>
+          <!-- #endif -->
+        </view>
+        <view class="action-row">
+          <button class="application-button application-button--ghost" data-testid="open-navigation" @click="openVenueNavigation">
+            导航到这里
+          </button>
+          <button class="application-button application-button--ghost" data-testid="download-ics" @click="downloadCalendar">
+            加入日历
+          </button>
+        </view>
+        <text v-if="calendarHint" class="error-copy">{{ calendarHint }}</text>
       </view>
 
       <view class="panel">
@@ -768,8 +962,32 @@ if (initialMatchId) {
       </view>
 
       <view v-if="isHost && !isCancelled" class="panel panel-last">
+        <text class="panel-label">现场球台</text>
+        <text class="panel-value">到场看到空台后，填上球台号 (例如 "3 号台")，球友会看到最新的位置。</text>
+        <view class="check-in-input-row">
+          <input
+            v-model="courtNameDraft"
+            class="check-in-input"
+            maxlength="32"
+            placeholder="例如 3 号台"
+            data-testid="court-name-input"
+          />
+          <button
+            class="application-button application-button--primary"
+            data-testid="save-court-name"
+            :disabled="courtNameSaving"
+            @click="saveCourtName"
+          >
+            {{ courtNameSaving ? '保存中…' : '保存' }}
+          </button>
+        </view>
+        <text v-if="courtNameError" class="error-copy">{{ courtNameError }}</text>
+        <text v-else-if="courtNameToast" class="panel-value">{{ courtNameToast }}</text>
+      </view>
+
+      <view v-if="isHost && !isCancelled" class="panel panel-last">
         <text class="panel-label">主理人操作</text>
-        <text class="panel-value">局内沟通不顺或场馆变动时，可以提前取消这场球局，已通过的球友会收到系统消息。</text>
+        <text class="panel-value">人凑不齐、场馆变动或时间冲突时，可以提前解散这场约球。点击后会有二次确认；已加入和申请中的球友都会收到系统通知。</text>
         <view class="action-row">
           <button
             class="application-button application-button--secondary"
@@ -777,7 +995,7 @@ if (initialMatchId) {
             :disabled="cancelling"
             @click="handleCancelMatch"
           >
-            {{ cancelling ? '取消中...' : '取消这场球局' }}
+            {{ cancelling ? '解散中…' : '解散约球' }}
           </button>
           <button class="application-button application-button--ghost" data-testid="share-match" @click="shareMatch">
             分享给球友
@@ -1132,6 +1350,9 @@ if (initialMatchId) {
         </view>
       </view>
     </view>
+
+    <AppToast />
+    <AppModal />
   </view>
 </template>
 
@@ -1141,7 +1362,10 @@ if (initialMatchId) {
 .page {
   min-height: 100vh;
   padding: 32rpx;
-  padding-bottom: calc(280rpx + env(safe-area-inset-bottom, 0px));
+  /* CTA bar at the bottom is ~200rpx tall + 32rpx bottom offset; leave a
+     full screen-worth of breathing room so the last content card never
+     gets clipped on shorter viewports. */
+  padding-bottom: calc(360rpx + env(safe-area-inset-bottom, 0px));
   background:
     radial-gradient(circle at top right, rgba(255, 162, 102, 0.22), transparent 30%),
     linear-gradient(180deg, #fff4e8 0%, $color-bg 50%, #fffdf8 100%);
@@ -1278,6 +1502,36 @@ if (initialMatchId) {
   margin-bottom: 24rpx;
 }
 
+.venue-map {
+  margin-top: 16rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #fff8f1;
+}
+.venue-map-canvas {
+  width: 100%;
+  height: 320rpx;
+}
+.venue-map-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36rpx 24rpx;
+  background: linear-gradient(135deg, #fff3e6, #fffdf9);
+  border: 1px dashed rgba(255, 106, 61, 0.32);
+  border-radius: 20rpx;
+}
+.venue-map-pin {
+  font-size: 56rpx;
+  margin-bottom: 8rpx;
+}
+.venue-map-hint {
+  font-size: 24rpx;
+  color: $color-ink;
+  text-align: center;
+}
+
 .application-card {
   margin-top: 18rpx;
   padding: 22rpx;
@@ -1377,13 +1631,16 @@ if (initialMatchId) {
 
 .cta-bar {
   position: fixed;
-  left: 32rpx;
-  right: 32rpx;
-  bottom: calc(32rpx + env(safe-area-inset-bottom, 0px));
-  padding: 24rpx;
-  border-radius: 30rpx;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Full-width bottom bar flush against the viewport edge. Inner
+     padding handles content spacing; safe-area-inset-bottom pads the
+     home-indicator on iPhone X-style devices. */
+  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom, 0px));
   background: rgba(255, 253, 249, 0.98);
-  box-shadow: $shadow-card;
+  border-top: 1rpx solid rgba(15, 28, 46, 0.08);
+  box-shadow: 0 -8rpx 24rpx rgba(15, 28, 46, 0.08);
 }
 
 .cta-copy {

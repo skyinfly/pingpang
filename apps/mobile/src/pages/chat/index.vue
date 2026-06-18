@@ -7,6 +7,7 @@ import { useChatMessagesQuery } from '../../composables/useChatMessagesQuery';
 import { useThreadDetailQuery } from '../../composables/useThreadDetailQuery';
 import { useAuthStore } from '../../stores/auth';
 import { formatThreadStatus } from '../../utils/copy';
+import LocationHeader from '../../components/LocationHeader.vue';
 
 const authStore = useAuthStore();
 const currentUserId = computed(() => authStore.user?.id ?? '');
@@ -85,11 +86,31 @@ const threadDetailQuery = useThreadDetailQuery({
 const thread = computed(() => threadDetailQuery.data.value?.thread ?? null);
 const participants = computed(() => threadDetailQuery.data.value?.participants ?? []);
 const canUseThread = computed(() => Boolean(isAuthenticated.value && activeThreadId.value));
+// Detect "not a member" cleanly. Backend returns 403 from
+// `/chat-threads/:id` when the user isn't host or approved member,
+// so we trust that as the canonical signal. Without this guard the
+// page falls through to its default state and exposes the raw thread
+// id (e.g. "聊天线程 cmqi2qsx..."), which looks broken.
+const accessDenied = computed(() => {
+  const err = threadDetailQuery.error.value as { statusCode?: number } | null;
+  return err?.statusCode === 403;
+});
+function goBackToDetail() {
+  if (!activeThreadId.value) return;
+  uni.navigateTo({
+    url: `/pages/match-detail/index?id=${encodeURIComponent(activeThreadId.value)}`,
+  });
+}
 
 watch(
   [currentUserId, activeThreadId],
   ([userId, threadId]) => {
     if (!userId || !threadId) {
+      return;
+    }
+    // Skip the read-receipt POST entirely when we already know the user
+    // isn't a member — keeps the console clean of inevitable 403s.
+    if (accessDenied.value) {
       return;
     }
 
@@ -140,6 +161,7 @@ async function handleSend() {
 
 <template>
   <view class="page">
+    <LocationHeader />
     <template v-if="!isAuthenticated">
       <view class="empty-state empty-state--full">
         <text class="empty-title">登录后进入局内聊天</text>
@@ -152,6 +174,16 @@ async function handleSend() {
       <view class="empty-state empty-state--full">
         <text class="empty-title">还没有选中聊天会话</text>
         <text class="empty-copy">先从消息或球局详情进入聊天，再继续和球友沟通。</text>
+      </view>
+    </template>
+
+    <template v-else-if="accessDenied">
+      <view class="empty-state empty-state--full" data-testid="chat-access-denied">
+        <text class="empty-title">你还不是局内成员</text>
+        <text class="empty-copy">先去球局详情申请加入，主理人确认后就能进来聊天。</text>
+        <button class="composer-button login-button" data-testid="chat-back-to-detail" @click="goBackToDetail">
+          去球局详情
+        </button>
       </view>
     </template>
 

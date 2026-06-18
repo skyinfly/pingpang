@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MessagesService } from './messages.service';
 import { AuthUser } from '../common/auth/auth-user.decorator';
@@ -54,5 +54,14 @@ export class MessagesController {
       kind: body.kind,
       matchId: body.matchId,
     });
+  }
+
+  /**
+   * Bulk delete notifications. Chat messages are protected because they
+   * belong to all participants in the thread; see MessagesService.clear.
+   */
+  @Delete()
+  clear(@AuthUser() user: SessionUser, @Query('kind') kind?: string) {
+    return this.messagesService.clear({ userId: user.id, kind });
   }
 }

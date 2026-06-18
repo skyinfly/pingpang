@@ -1,6 +1,7 @@
 ﻿import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
+import { createPinia } from 'pinia';
 import SquarePage from '../pages/square/index.vue';
 
 describe('SquarePage', () => {
@@ -84,7 +85,8 @@ describe('SquarePage', () => {
 
     const wrapper = mount(SquarePage, {
       global: {
-        plugins: [[VueQueryPlugin, { queryClient: new QueryClient() }]],
+        // Pinia: useMatchesQuery reads the shared location store.
+        plugins: [createPinia(), [VueQueryPlugin, { queryClient: new QueryClient() }]],
       },
     });
 
@@ -100,8 +102,10 @@ describe('SquarePage', () => {
       expect(wrapper.text()).toContain('12:30 开局');
     });
 
-    expect(requestedUrls[0]).toContain('city=%E4%B8%8A%E6%B5%B7');
-    expect(requestedUrls[0]).toContain('level=intermediate');
+    // Default filters are now '全部' / '全部' (no server-side city or
+    // level filter) so a new user sees activity from every region.
+    expect(requestedUrls[0]).not.toContain('city=');
+    expect(requestedUrls[0]).not.toContain('level=');
 
     await wrapper.get('.card').trigger('click');
 

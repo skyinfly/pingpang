@@ -16,6 +16,13 @@ enum OptionPresetKind {
 model User {
   id               String                  @id @default(cuid())
   phone            String?                 @unique
+  /// Lowercased email address. Used as the H5 login identifier when SMS
+  /// isn't available — kept independent of `phone` so a user can have
+  /// either or both depending on which client they signed up from.
+  email            String?                 @unique
+  /// bcrypt hash of the user's password. Null for accounts created via
+  /// WeChat / phone OTP that never set a password.
+  passwordHash     String?
   wechatOpenId     String?                 @unique
   wechatUnionId    String?                 @unique
   nickname         String
@@ -33,7 +40,22 @@ model Venue {
   name               String
   city               String
   district           String?
+  /// Fallback "default" distance shown when the caller does not pass a
+  /// location. Kept for backwards compatibility — real distance is computed
+  /// on demand via Haversine when lat/lng is provided.
   distanceKm         Float
+  /// GCJ-02 (mars) coordinates. Mainland China legal requirement; matches
+  /// what WeChat's getLocation({ type: 'gcj02' }) and Tencent Maps return,
+  /// so the value can be passed straight to <map> without a transform.
+  latitude           Float?
+  longitude          Float?
+  /// Full human-readable street address. Shown on the match detail card and
+  /// passed to wx.openLocation for native navigation.
+  address            String?
+  /// AMap POI id. Set when this Venue row was upserted from a user-selected
+  /// search result so the same physical place doesn't get duplicated across
+  /// users. Null for hand-seeded venues.
+  amapPoiId          String?                 @unique
   sortOrder          Int                     @default(0)
   isActive           Boolean                 @default(true)
   createdAt          DateTime                @default(now())

@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # ----- Build stage -----
 FROM node:20-bookworm-slim AS builder
 
@@ -11,9 +9,10 @@ WORKDIR /workspace
 
 RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
 
-# Copy workspace manifest + lockfile + every package manifest first so this
-# layer caches as long as no manifest changes.
+# Copy lockfile/manifests + .npmrc (mirror config) first so this layer
+# caches as long as no manifest changes.
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+COPY .npmrc ./.npmrc
 COPY apps/api/package.json apps/api/
 COPY apps/admin/package.json apps/admin/
 COPY apps/mobile/package.json apps/mobile/
@@ -25,13 +24,17 @@ RUN pnpm install --frozen-lockfile --filter @pingpang/api...
 COPY packages/contracts packages/contracts
 COPY apps/api apps/api
 
-# Generate the Prisma client + compile NestJS to dist/
+# Generate the Prisma client + compile NestJS to dist/. Keep dev deps
+# around for the build; the runtime stage uses pnpm deploy --legacy below
+# to flatten only the production set.
 RUN pnpm --filter @pingpang/api exec prisma generate \
     && pnpm --filter @pingpang/api build
 
-# Prune dev dependencies for the runtime image.
-RUN pnpm install --frozen-lockfile --filter @pingpang/api --prod \
-    && pnpm store prune
+# `pnpm deploy --legacy` produces a *flat* node_modules so node's require()
+# can resolve every transitive dep without the workspace symlinks pnpm 10
+# normally emits. Without it the runtime container crashes immediately on
+# `Cannot find module 'reflect-metadata'`.
+RUN pnpm --filter @pingpang/api deploy --prod --legacy /deploy/api
 
 # ----- Runtime stage -----
 FROM node:20-bookworm-slim AS runtime
@@ -39,30 +42,33 @@ FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 
-# OpenSSL is required by Prisma's query engine.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl ca-certificates dumb-init \
-    && rm -rf /var/lib/apt/lists/*
+# node:bookworm-slim already has openssl + ca-certificates; we only need a
+# tiny init wrapper to forward signals. We ship the static binary in the
+# repo (apps/api/vendor/dumb-init) instead of `ADD`-ing from GitHub at
+# build time — connections to github.com from mainland China time out
+# unpredictably and break otherwise-clean rebuilds.
+COPY apps/api/vendor/dumb-init /usr/local/bin/dumb-init
+RUN chmod +x /usr/local/bin/dumb-init
 
 WORKDIR /app
 
-# Bring over the compiled output, runtime deps, prisma assets, and migrations.
-COPY --from=builder /workspace/apps/api/dist ./dist
-COPY --from=builder /workspace/apps/api/node_modules ./node_modules
-COPY --from=builder /workspace/apps/api/package.json ./package.json
-COPY --from=builder /workspace/apps/api/prisma ./prisma
-COPY --from=builder /workspace/node_modules ./root_node_modules
-
-# nest build keeps generated/prisma/* outside dist; mount it next to dist so
-# the runtime require('../generated/prisma') still resolves.
-COPY --from=builder /workspace/apps/api/src/generated ./src/generated
+# Pull the flattened deploy bundle from the builder. /deploy/api contains
+# package.json + a complete flat node_modules; we layer dist/ + prisma on
+# top of that.
+COPY --from=builder /deploy/api/package.json     ./package.json
+COPY --from=builder /deploy/api/node_modules     ./node_modules
+COPY --from=builder /workspace/apps/api/dist     ./dist
+COPY --from=builder /workspace/apps/api/prisma   ./prisma
+# nest build keeps generated/prisma/* outside dist; mount it where the
+# compiled JS does `require('../../generated/prisma')` from
+# dist/src/common/prisma/prisma.service.js, i.e. dist/src/generated/prisma.
+COPY --from=builder /workspace/apps/api/src/generated ./dist/src/generated
 
 EXPOSE 3000
-
 USER node
 
-# Run prisma migrate deploy as part of the entry so the schema is always in
-# sync with the binary. Skip with SKIP_MIGRATIONS=1 if your operator runs
-# migrations in a separate job (recommended for k8s).
+# Apply migrations on boot unless the operator runs them in a separate
+# job (SKIP_MIGRATIONS=1). Nest compiles to dist/src/main.js, not
+# dist/main.js — keep the path in sync with the source layout.
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "if [ \"$SKIP_MIGRATIONS\" != \"1\" ]; then ./node_modules/.bin/prisma migrate deploy; fi && node dist/main.js"]
+CMD ["sh", "-c", "if [ \"$SKIP_MIGRATIONS\" != \"1\" ]; then ./node_modules/.bin/prisma migrate deploy; fi && node dist/src/main.js"]

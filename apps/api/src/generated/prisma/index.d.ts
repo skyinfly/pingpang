@@ -2123,6 +2123,8 @@ export namespace Prisma {
   export type UserMinAggregateOutputType = {
     id: string | null
     phone: string | null
+    email: string | null
+    passwordHash: string | null
     wechatOpenId: string | null
     wechatUnionId: string | null
     nickname: string | null
@@ -2136,6 +2138,8 @@ export namespace Prisma {
   export type UserMaxAggregateOutputType = {
     id: string | null
     phone: string | null
+    email: string | null
+    passwordHash: string | null
     wechatOpenId: string | null
     wechatUnionId: string | null
     nickname: string | null
@@ -2149,6 +2153,8 @@ export namespace Prisma {
   export type UserCountAggregateOutputType = {
     id: number
     phone: number
+    email: number
+    passwordHash: number
     wechatOpenId: number
     wechatUnionId: number
     nickname: number
@@ -2172,6 +2178,8 @@ export namespace Prisma {
   export type UserMinAggregateInputType = {
     id?: true
     phone?: true
+    email?: true
+    passwordHash?: true
     wechatOpenId?: true
     wechatUnionId?: true
     nickname?: true
@@ -2185,6 +2193,8 @@ export namespace Prisma {
   export type UserMaxAggregateInputType = {
     id?: true
     phone?: true
+    email?: true
+    passwordHash?: true
     wechatOpenId?: true
     wechatUnionId?: true
     nickname?: true
@@ -2198,6 +2208,8 @@ export namespace Prisma {
   export type UserCountAggregateInputType = {
     id?: true
     phone?: true
+    email?: true
+    passwordHash?: true
     wechatOpenId?: true
     wechatUnionId?: true
     nickname?: true
@@ -2298,6 +2310,8 @@ export namespace Prisma {
   export type UserGroupByOutputType = {
     id: string
     phone: string | null
+    email: string | null
+    passwordHash: string | null
     wechatOpenId: string | null
     wechatUnionId: string | null
     nickname: string
@@ -2330,6 +2344,8 @@ export namespace Prisma {
   export type UserSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     phone?: boolean
+    email?: boolean
+    passwordHash?: boolean
     wechatOpenId?: boolean
     wechatUnionId?: boolean
     nickname?: boolean
@@ -2346,6 +2362,8 @@ export namespace Prisma {
   export type UserSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     phone?: boolean
+    email?: boolean
+    passwordHash?: boolean
     wechatOpenId?: boolean
     wechatUnionId?: boolean
     nickname?: boolean
@@ -2359,6 +2377,8 @@ export namespace Prisma {
   export type UserSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     phone?: boolean
+    email?: boolean
+    passwordHash?: boolean
     wechatOpenId?: boolean
     wechatUnionId?: boolean
     nickname?: boolean
@@ -2372,6 +2392,8 @@ export namespace Prisma {
   export type UserSelectScalar = {
     id?: boolean
     phone?: boolean
+    email?: boolean
+    passwordHash?: boolean
     wechatOpenId?: boolean
     wechatUnionId?: boolean
     nickname?: boolean
@@ -2382,7 +2404,7 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "wechatOpenId" | "wechatUnionId" | "nickname" | "city" | "level" | "avatarUrl" | "creditScore" | "createdAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "email" | "passwordHash" | "wechatOpenId" | "wechatUnionId" | "nickname" | "city" | "level" | "avatarUrl" | "creditScore" | "createdAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     hostedMatches?: boolean | User$hostedMatchesArgs<ExtArgs>
     threadMembership?: boolean | User$threadMembershipArgs<ExtArgs>
@@ -2400,6 +2422,17 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       phone: string | null
+      /**
+       * Lowercased email address. Used as the H5 login identifier when SMS
+       * isn't available — kept independent of `phone` so a user can have
+       * either or both depending on which client they signed up from.
+       */
+      email: string | null
+      /**
+       * bcrypt hash of the user's password. Null for accounts created via
+       * WeChat / phone OTP that never set a password.
+       */
+      passwordHash: string | null
       wechatOpenId: string | null
       wechatUnionId: string | null
       nickname: string
@@ -2835,6 +2868,8 @@ export namespace Prisma {
   interface UserFieldRefs {
     readonly id: FieldRef<"User", 'String'>
     readonly phone: FieldRef<"User", 'String'>
+    readonly email: FieldRef<"User", 'String'>
+    readonly passwordHash: FieldRef<"User", 'String'>
     readonly wechatOpenId: FieldRef<"User", 'String'>
     readonly wechatUnionId: FieldRef<"User", 'String'>
     readonly nickname: FieldRef<"User", 'String'>
@@ -3311,11 +3346,15 @@ export namespace Prisma {
 
   export type VenueAvgAggregateOutputType = {
     distanceKm: number | null
+    latitude: number | null
+    longitude: number | null
     sortOrder: number | null
   }
 
   export type VenueSumAggregateOutputType = {
     distanceKm: number | null
+    latitude: number | null
+    longitude: number | null
     sortOrder: number | null
   }
 
@@ -3325,6 +3364,10 @@ export namespace Prisma {
     city: string | null
     district: string | null
     distanceKm: number | null
+    latitude: number | null
+    longitude: number | null
+    address: string | null
+    amapPoiId: string | null
     sortOrder: number | null
     isActive: boolean | null
     createdAt: Date | null
@@ -3337,6 +3380,10 @@ export namespace Prisma {
     city: string | null
     district: string | null
     distanceKm: number | null
+    latitude: number | null
+    longitude: number | null
+    address: string | null
+    amapPoiId: string | null
     sortOrder: number | null
     isActive: boolean | null
     createdAt: Date | null
@@ -3349,6 +3396,10 @@ export namespace Prisma {
     city: number
     district: number
     distanceKm: number
+    latitude: number
+    longitude: number
+    address: number
+    amapPoiId: number
     sortOrder: number
     isActive: number
     createdAt: number
@@ -3359,11 +3410,15 @@ export namespace Prisma {
 
   export type VenueAvgAggregateInputType = {
     distanceKm?: true
+    latitude?: true
+    longitude?: true
     sortOrder?: true
   }
 
   export type VenueSumAggregateInputType = {
     distanceKm?: true
+    latitude?: true
+    longitude?: true
     sortOrder?: true
   }
 
@@ -3373,6 +3428,10 @@ export namespace Prisma {
     city?: true
     district?: true
     distanceKm?: true
+    latitude?: true
+    longitude?: true
+    address?: true
+    amapPoiId?: true
     sortOrder?: true
     isActive?: true
     createdAt?: true
@@ -3385,6 +3444,10 @@ export namespace Prisma {
     city?: true
     district?: true
     distanceKm?: true
+    latitude?: true
+    longitude?: true
+    address?: true
+    amapPoiId?: true
     sortOrder?: true
     isActive?: true
     createdAt?: true
@@ -3397,6 +3460,10 @@ export namespace Prisma {
     city?: true
     district?: true
     distanceKm?: true
+    latitude?: true
+    longitude?: true
+    address?: true
+    amapPoiId?: true
     sortOrder?: true
     isActive?: true
     createdAt?: true
@@ -3496,6 +3563,10 @@ export namespace Prisma {
     city: string
     district: string | null
     distanceKm: number
+    latitude: number | null
+    longitude: number | null
+    address: string | null
+    amapPoiId: string | null
     sortOrder: number
     isActive: boolean
     createdAt: Date
@@ -3527,6 +3598,10 @@ export namespace Prisma {
     city?: boolean
     district?: boolean
     distanceKm?: boolean
+    latitude?: boolean
+    longitude?: boolean
+    address?: boolean
+    amapPoiId?: boolean
     sortOrder?: boolean
     isActive?: boolean
     createdAt?: boolean
@@ -3543,6 +3618,10 @@ export namespace Prisma {
     city?: boolean
     district?: boolean
     distanceKm?: boolean
+    latitude?: boolean
+    longitude?: boolean
+    address?: boolean
+    amapPoiId?: boolean
     sortOrder?: boolean
     isActive?: boolean
     createdAt?: boolean
@@ -3555,6 +3634,10 @@ export namespace Prisma {
     city?: boolean
     district?: boolean
     distanceKm?: boolean
+    latitude?: boolean
+    longitude?: boolean
+    address?: boolean
+    amapPoiId?: boolean
     sortOrder?: boolean
     isActive?: boolean
     createdAt?: boolean
@@ -3567,13 +3650,17 @@ export namespace Prisma {
     city?: boolean
     district?: boolean
     distanceKm?: boolean
+    latitude?: boolean
+    longitude?: boolean
+    address?: boolean
+    amapPoiId?: boolean
     sortOrder?: boolean
     isActive?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type VenueOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "city" | "district" | "distanceKm" | "sortOrder" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["venue"]>
+  export type VenueOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "city" | "district" | "distanceKm" | "latitude" | "longitude" | "address" | "amapPoiId" | "sortOrder" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["venue"]>
   export type VenueInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     courts?: boolean | Venue$courtsArgs<ExtArgs>
     availabilitySlots?: boolean | Venue$availabilitySlotsArgs<ExtArgs>
@@ -3595,7 +3682,30 @@ export namespace Prisma {
       name: string
       city: string
       district: string | null
+      /**
+       * Fallback "default" distance shown when the caller does not pass a
+       * location. Kept for backwards compatibility — real distance is computed
+       * on demand via Haversine when lat/lng is provided.
+       */
       distanceKm: number
+      /**
+       * GCJ-02 (mars) coordinates. Mainland China legal requirement; matches
+       * what WeChat's getLocation({ type: 'gcj02' }) and Tencent Maps return,
+       * so the value can be passed straight to <map> without a transform.
+       */
+      latitude: number | null
+      longitude: number | null
+      /**
+       * Full human-readable street address. Shown on the match detail card and
+       * passed to wx.openLocation for native navigation.
+       */
+      address: string | null
+      /**
+       * AMap POI id. Set when this Venue row was upserted from a user-selected
+       * search result so the same physical place doesn't get duplicated across
+       * users. Null for hand-seeded venues.
+       */
+      amapPoiId: string | null
       sortOrder: number
       isActive: boolean
       createdAt: Date
@@ -4031,6 +4141,10 @@ export namespace Prisma {
     readonly city: FieldRef<"Venue", 'String'>
     readonly district: FieldRef<"Venue", 'String'>
     readonly distanceKm: FieldRef<"Venue", 'Float'>
+    readonly latitude: FieldRef<"Venue", 'Float'>
+    readonly longitude: FieldRef<"Venue", 'Float'>
+    readonly address: FieldRef<"Venue", 'String'>
+    readonly amapPoiId: FieldRef<"Venue", 'String'>
     readonly sortOrder: FieldRef<"Venue", 'Int'>
     readonly isActive: FieldRef<"Venue", 'Boolean'>
     readonly createdAt: FieldRef<"Venue", 'DateTime'>
@@ -15988,6 +16102,8 @@ export namespace Prisma {
   export const UserScalarFieldEnum: {
     id: 'id',
     phone: 'phone',
+    email: 'email',
+    passwordHash: 'passwordHash',
     wechatOpenId: 'wechatOpenId',
     wechatUnionId: 'wechatUnionId',
     nickname: 'nickname',
@@ -16007,6 +16123,10 @@ export namespace Prisma {
     city: 'city',
     district: 'district',
     distanceKm: 'distanceKm',
+    latitude: 'latitude',
+    longitude: 'longitude',
+    address: 'address',
+    amapPoiId: 'amapPoiId',
     sortOrder: 'sortOrder',
     isActive: 'isActive',
     createdAt: 'createdAt',
@@ -16287,6 +16407,8 @@ export namespace Prisma {
     NOT?: UserWhereInput | UserWhereInput[]
     id?: StringFilter<"User"> | string
     phone?: StringNullableFilter<"User"> | string | null
+    email?: StringNullableFilter<"User"> | string | null
+    passwordHash?: StringNullableFilter<"User"> | string | null
     wechatOpenId?: StringNullableFilter<"User"> | string | null
     wechatUnionId?: StringNullableFilter<"User"> | string | null
     nickname?: StringFilter<"User"> | string
@@ -16302,6 +16424,8 @@ export namespace Prisma {
   export type UserOrderByWithRelationInput = {
     id?: SortOrder
     phone?: SortOrderInput | SortOrder
+    email?: SortOrderInput | SortOrder
+    passwordHash?: SortOrderInput | SortOrder
     wechatOpenId?: SortOrderInput | SortOrder
     wechatUnionId?: SortOrderInput | SortOrder
     nickname?: SortOrder
@@ -16317,11 +16441,13 @@ export namespace Prisma {
   export type UserWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     phone?: string
+    email?: string
     wechatOpenId?: string
     wechatUnionId?: string
     AND?: UserWhereInput | UserWhereInput[]
     OR?: UserWhereInput[]
     NOT?: UserWhereInput | UserWhereInput[]
+    passwordHash?: StringNullableFilter<"User"> | string | null
     nickname?: StringFilter<"User"> | string
     city?: StringFilter<"User"> | string
     level?: StringFilter<"User"> | string
@@ -16330,11 +16456,13 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     hostedMatches?: MatchListRelationFilter
     threadMembership?: ChatThreadParticipantListRelationFilter
-  }, "id" | "phone" | "wechatOpenId" | "wechatUnionId">
+  }, "id" | "phone" | "email" | "wechatOpenId" | "wechatUnionId">
 
   export type UserOrderByWithAggregationInput = {
     id?: SortOrder
     phone?: SortOrderInput | SortOrder
+    email?: SortOrderInput | SortOrder
+    passwordHash?: SortOrderInput | SortOrder
     wechatOpenId?: SortOrderInput | SortOrder
     wechatUnionId?: SortOrderInput | SortOrder
     nickname?: SortOrder
@@ -16356,6 +16484,8 @@ export namespace Prisma {
     NOT?: UserScalarWhereWithAggregatesInput | UserScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"User"> | string
     phone?: StringNullableWithAggregatesFilter<"User"> | string | null
+    email?: StringNullableWithAggregatesFilter<"User"> | string | null
+    passwordHash?: StringNullableWithAggregatesFilter<"User"> | string | null
     wechatOpenId?: StringNullableWithAggregatesFilter<"User"> | string | null
     wechatUnionId?: StringNullableWithAggregatesFilter<"User"> | string | null
     nickname?: StringWithAggregatesFilter<"User"> | string
@@ -16375,6 +16505,10 @@ export namespace Prisma {
     city?: StringFilter<"Venue"> | string
     district?: StringNullableFilter<"Venue"> | string | null
     distanceKm?: FloatFilter<"Venue"> | number
+    latitude?: FloatNullableFilter<"Venue"> | number | null
+    longitude?: FloatNullableFilter<"Venue"> | number | null
+    address?: StringNullableFilter<"Venue"> | string | null
+    amapPoiId?: StringNullableFilter<"Venue"> | string | null
     sortOrder?: IntFilter<"Venue"> | number
     isActive?: BoolFilter<"Venue"> | boolean
     createdAt?: DateTimeFilter<"Venue"> | Date | string
@@ -16390,6 +16524,10 @@ export namespace Prisma {
     city?: SortOrder
     district?: SortOrderInput | SortOrder
     distanceKm?: SortOrder
+    latitude?: SortOrderInput | SortOrder
+    longitude?: SortOrderInput | SortOrder
+    address?: SortOrderInput | SortOrder
+    amapPoiId?: SortOrderInput | SortOrder
     sortOrder?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
@@ -16401,6 +16539,7 @@ export namespace Prisma {
 
   export type VenueWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    amapPoiId?: string
     AND?: VenueWhereInput | VenueWhereInput[]
     OR?: VenueWhereInput[]
     NOT?: VenueWhereInput | VenueWhereInput[]
@@ -16408,6 +16547,9 @@ export namespace Prisma {
     city?: StringFilter<"Venue"> | string
     district?: StringNullableFilter<"Venue"> | string | null
     distanceKm?: FloatFilter<"Venue"> | number
+    latitude?: FloatNullableFilter<"Venue"> | number | null
+    longitude?: FloatNullableFilter<"Venue"> | number | null
+    address?: StringNullableFilter<"Venue"> | string | null
     sortOrder?: IntFilter<"Venue"> | number
     isActive?: BoolFilter<"Venue"> | boolean
     createdAt?: DateTimeFilter<"Venue"> | Date | string
@@ -16415,7 +16557,7 @@ export namespace Prisma {
     courts?: VenueCourtListRelationFilter
     availabilitySlots?: VenueAvailabilitySlotListRelationFilter
     matches?: MatchListRelationFilter
-  }, "id">
+  }, "id" | "amapPoiId">
 
   export type VenueOrderByWithAggregationInput = {
     id?: SortOrder
@@ -16423,6 +16565,10 @@ export namespace Prisma {
     city?: SortOrder
     district?: SortOrderInput | SortOrder
     distanceKm?: SortOrder
+    latitude?: SortOrderInput | SortOrder
+    longitude?: SortOrderInput | SortOrder
+    address?: SortOrderInput | SortOrder
+    amapPoiId?: SortOrderInput | SortOrder
     sortOrder?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
@@ -16443,6 +16589,10 @@ export namespace Prisma {
     city?: StringWithAggregatesFilter<"Venue"> | string
     district?: StringNullableWithAggregatesFilter<"Venue"> | string | null
     distanceKm?: FloatWithAggregatesFilter<"Venue"> | number
+    latitude?: FloatNullableWithAggregatesFilter<"Venue"> | number | null
+    longitude?: FloatNullableWithAggregatesFilter<"Venue"> | number | null
+    address?: StringNullableWithAggregatesFilter<"Venue"> | string | null
+    amapPoiId?: StringNullableWithAggregatesFilter<"Venue"> | string | null
     sortOrder?: IntWithAggregatesFilter<"Venue"> | number
     isActive?: BoolWithAggregatesFilter<"Venue"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"Venue"> | Date | string
@@ -17266,6 +17416,8 @@ export namespace Prisma {
   export type UserCreateInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -17281,6 +17433,8 @@ export namespace Prisma {
   export type UserUncheckedCreateInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -17296,6 +17450,8 @@ export namespace Prisma {
   export type UserUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -17311,6 +17467,8 @@ export namespace Prisma {
   export type UserUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -17326,6 +17484,8 @@ export namespace Prisma {
   export type UserCreateManyInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -17339,6 +17499,8 @@ export namespace Prisma {
   export type UserUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -17352,6 +17514,8 @@ export namespace Prisma {
   export type UserUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -17368,6 +17532,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -17383,6 +17551,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -17398,6 +17570,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17413,6 +17589,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17428,6 +17608,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -17440,6 +17624,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17452,6 +17640,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18433,6 +18625,8 @@ export namespace Prisma {
   export type UserCountOrderByAggregateInput = {
     id?: SortOrder
     phone?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
     wechatOpenId?: SortOrder
     wechatUnionId?: SortOrder
     nickname?: SortOrder
@@ -18450,6 +18644,8 @@ export namespace Prisma {
   export type UserMaxOrderByAggregateInput = {
     id?: SortOrder
     phone?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
     wechatOpenId?: SortOrder
     wechatUnionId?: SortOrder
     nickname?: SortOrder
@@ -18463,6 +18659,8 @@ export namespace Prisma {
   export type UserMinOrderByAggregateInput = {
     id?: SortOrder
     phone?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
     wechatOpenId?: SortOrder
     wechatUnionId?: SortOrder
     nickname?: SortOrder
@@ -18554,6 +18752,17 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
+  export type FloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
   export type BoolFilter<$PrismaModel = never> = {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolFilter<$PrismaModel> | boolean
@@ -18585,6 +18794,10 @@ export namespace Prisma {
     city?: SortOrder
     district?: SortOrder
     distanceKm?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
+    address?: SortOrder
+    amapPoiId?: SortOrder
     sortOrder?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
@@ -18593,6 +18806,8 @@ export namespace Prisma {
 
   export type VenueAvgOrderByAggregateInput = {
     distanceKm?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
     sortOrder?: SortOrder
   }
 
@@ -18602,6 +18817,10 @@ export namespace Prisma {
     city?: SortOrder
     district?: SortOrder
     distanceKm?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
+    address?: SortOrder
+    amapPoiId?: SortOrder
     sortOrder?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
@@ -18614,6 +18833,10 @@ export namespace Prisma {
     city?: SortOrder
     district?: SortOrder
     distanceKm?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
+    address?: SortOrder
+    amapPoiId?: SortOrder
     sortOrder?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
@@ -18622,6 +18845,8 @@ export namespace Prisma {
 
   export type VenueSumOrderByAggregateInput = {
     distanceKm?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
     sortOrder?: SortOrder
   }
 
@@ -18639,6 +18864,22 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedFloatNullableFilter<$PrismaModel>
+    _min?: NestedFloatNullableFilter<$PrismaModel>
+    _max?: NestedFloatNullableFilter<$PrismaModel>
   }
 
   export type BoolWithAggregatesFilter<$PrismaModel = never> = {
@@ -19357,6 +19598,14 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type NullableFloatFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type BoolFieldUpdateOperationsInput = {
     set?: boolean
   }
@@ -20002,6 +20251,17 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
   export type NestedBoolFilter<$PrismaModel = never> = {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolFilter<$PrismaModel> | boolean
@@ -20021,6 +20281,22 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedFloatNullableFilter<$PrismaModel>
+    _min?: NestedFloatNullableFilter<$PrismaModel>
+    _max?: NestedFloatNullableFilter<$PrismaModel>
   }
 
   export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
@@ -20429,6 +20705,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -20443,6 +20723,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -20529,6 +20813,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20543,6 +20831,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20573,6 +20865,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -20587,6 +20883,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -20673,6 +20973,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20687,6 +20991,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20714,6 +21022,8 @@ export namespace Prisma {
   export type UserCreateWithoutHostedMatchesInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -20728,6 +21038,8 @@ export namespace Prisma {
   export type UserUncheckedCreateWithoutHostedMatchesInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -20750,6 +21062,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -20764,6 +21080,10 @@ export namespace Prisma {
     city: string
     district?: string | null
     distanceKm: number
+    latitude?: number | null
+    longitude?: number | null
+    address?: string | null
+    amapPoiId?: string | null
     sortOrder?: number
     isActive?: boolean
     createdAt?: Date | string
@@ -20910,6 +21230,8 @@ export namespace Prisma {
   export type UserUpdateWithoutHostedMatchesInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -20924,6 +21246,8 @@ export namespace Prisma {
   export type UserUncheckedUpdateWithoutHostedMatchesInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -20952,6 +21276,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20966,6 +21294,10 @@ export namespace Prisma {
     city?: StringFieldUpdateOperationsInput | string
     district?: NullableStringFieldUpdateOperationsInput | string | null
     distanceKm?: FloatFieldUpdateOperationsInput | number
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    amapPoiId?: NullableStringFieldUpdateOperationsInput | string | null
     sortOrder?: IntFieldUpdateOperationsInput | number
     isActive?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -21487,6 +21819,8 @@ export namespace Prisma {
   export type UserCreateWithoutThreadMembershipInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -21501,6 +21835,8 @@ export namespace Prisma {
   export type UserUncheckedCreateWithoutThreadMembershipInput = {
     id?: string
     phone?: string | null
+    email?: string | null
+    passwordHash?: string | null
     wechatOpenId?: string | null
     wechatUnionId?: string | null
     nickname: string
@@ -21576,6 +21912,8 @@ export namespace Prisma {
   export type UserUpdateWithoutThreadMembershipInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string
@@ -21590,6 +21928,8 @@ export namespace Prisma {
   export type UserUncheckedUpdateWithoutThreadMembershipInput = {
     id?: StringFieldUpdateOperationsInput | string
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
     wechatOpenId?: NullableStringFieldUpdateOperationsInput | string | null
     wechatUnionId?: NullableStringFieldUpdateOperationsInput | string | null
     nickname?: StringFieldUpdateOperationsInput | string

@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateMatchDto {
   @IsString()
@@ -10,13 +10,33 @@ export class CreateMatchDto {
   @MaxLength(64)
   venueId!: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(64)
-  courtId!: string;
+  courtId?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(64)
-  slotId!: string;
+  slotId?: string;
+
+  /**
+   * Host-typed court label (e.g. "3 号台"). Optional at create time —
+   * the host can fill it in later from the match detail page once
+   * players actually arrive at the venue.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  courtName?: string;
+
+  /**
+   * Custom start time as ISO-8601. Used when no `slotId` is supplied
+   * so hosts can pick any time, not just a preset venue slot.
+   */
+  @IsOptional()
+  @IsISO8601()
+  startTime?: string;
 
   @IsString()
   @MaxLength(32)

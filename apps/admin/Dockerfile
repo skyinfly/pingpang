@@ -12,6 +12,7 @@ WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+COPY .npmrc ./.npmrc
 COPY apps/api/package.json apps/api/
 COPY apps/admin/package.json apps/admin/
 COPY apps/mobile/package.json apps/mobile/
@@ -22,8 +23,17 @@ RUN pnpm install --frozen-lockfile --filter @pingpang/admin...
 COPY packages/contracts packages/contracts
 COPY apps/admin apps/admin
 
+# Two build-time knobs:
+# - VITE_API_BASE_URL: absolute origin where the admin SPA calls the API
+#   (the gateway, in this deploy).
+# - VITE_BASE: URL prefix the SPA is served under, e.g. "/admin/". Vite
+#   bakes this into index.html so asset paths come out as /admin/assets/...
+#   instead of /assets/..., which matters because the gateway routes the
+#   /admin/ prefix to this container.
 ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ARG VITE_BASE=/
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_BASE=${VITE_BASE}
 
 RUN pnpm --filter @pingpang/admin build
 

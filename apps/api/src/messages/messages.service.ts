@@ -69,6 +69,23 @@ export class MessagesService {
     };
   }
 
+  /**
+   * Delete a user's messages in bulk. Scoped to the caller's user id so
+   * one user can never clear another's inbox. Chat messages are always
+   * preserved because they're shared state (other participants still need
+   * them); only system/invite notifications get nuked.
+   */
+  async clear(payload: { userId: string; kind?: string }) {
+    const kind = payload.kind?.trim();
+    const result = await this.prisma.message.deleteMany({
+      where: {
+        userId: payload.userId,
+        kind: kind ? kind : { in: ['system', 'invite'] },
+      },
+    });
+    return { deletedCount: result.count };
+  }
+
   async listThreads(userId: string, filters: { status?: string } = {}) {
     const normalizedStatus = filters.status?.trim();
     const threadStatusFilter =

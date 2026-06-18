@@ -14,6 +14,12 @@ export function useChatMessagesQuery(options: {
     enabled: computed(() => Boolean(resolvedUserId.value && resolvedThreadId.value)),
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,
+    // Mirror useThreadDetailQuery's retry policy — 4xx is permanent.
+    retry: (failureCount, error: unknown) => {
+      const status = (error as { statusCode?: number } | null)?.statusCode;
+      if (status && status >= 400 && status < 500) return false;
+      return failureCount < 2;
+    },
     queryFn: async () => {
       const response = await apiClient.listThreadMessages(resolvedThreadId.value);
       return response;

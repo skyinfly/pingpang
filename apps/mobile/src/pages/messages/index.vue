@@ -3,12 +3,53 @@ import { computed, ref } from 'vue';
 import { useMessagesQuery } from '../../composables/useMessagesQuery';
 import { useAuthStore } from '../../stores/auth';
 import { formatThreadStatus } from '../../utils/copy';
+import { clearMessages, markMessagesRead } from '../../services/api';
+import LocationHeader from '../../components/LocationHeader.vue';
 
 const authStore = useAuthStore();
 const activeUserId = computed(() => authStore.user?.id ?? '');
 const isAuthenticated = computed(() => Boolean(authStore.token && authStore.user));
 const messagesQuery = useMessagesQuery(() => activeUserId.value);
 const activeFilter = ref<'all' | 'system' | 'chat' | 'invite'>('all');
+const actionBusy = ref(false);
+const actionHint = ref('');
+
+async function markAllRead() {
+  if (actionBusy.value) return;
+  actionBusy.value = true;
+  actionHint.value = '';
+  try {
+    // Backend's POST /messages/read with no kind clears every unread row
+    // for the caller, which is what "全部已读" promises in the UI.
+    const result = await markMessagesRead({});
+    actionHint.value = `已标记 ${result.updatedCount} 条为已读`;
+    await messagesQuery.refetch();
+  } catch {
+    actionHint.value = '操作失败，请稍后再试';
+  } finally {
+    actionBusy.value = false;
+  }
+}
+
+async function clearNotifications() {
+  if (actionBusy.value) return;
+  actionBusy.value = true;
+  actionHint.value = '';
+  try {
+    // Only nuke notification rows; chat history is shared state and gets
+    // protected on the server. If the user filtered to invite/system we
+    // narrow the scope to that kind so they don't accidentally drop other
+    // categories they're still using.
+    const kind = activeFilter.value === 'system' || activeFilter.value === 'invite' ? activeFilter.value : undefined;
+    const result = await clearMessages(kind ? { kind } : {});
+    actionHint.value = `已清空 ${result.deletedCount} 条通知`;
+    await messagesQuery.refetch();
+  } catch {
+    actionHint.value = '清空失败，请稍后再试';
+  } finally {
+    actionBusy.value = false;
+  }
+}
 const summary = computed(
   () =>
     messagesQuery.data.value?.summary ?? {
@@ -91,6 +132,7 @@ function getMessageStatusLabel(status?: string | null) {
 
 <template>
   <view class="page">
+    <LocationHeader />
     <view class="hero">
       <text class="eyebrow">消息中心</text>
       <text class="title">消息中心</text>
@@ -112,6 +154,22 @@ function getMessageStatusLabel(status?: string | null) {
         <button data-filter="chat" class="filter-chip" :class="{ 'filter-chip--active': activeFilter === 'chat' }" @click="activeFilter = 'chat'">聊天</button>
         <button data-filter="invite" class="filter-chip" :class="{ 'filter-chip--active': activeFilter === 'invite' }" @click="activeFilter = 'invite'">邀请</button>
       </view>
+
+      <view class="action-row">
+        <button
+          class="action-link"
+          data-testid="messages-mark-all-read"
+          :disabled="actionBusy"
+          @click="markAllRead"
+        >全部已读</button>
+        <button
+          class="action-link"
+          data-testid="messages-clear"
+          :disabled="actionBusy"
+          @click="clearNotifications"
+        >清空通知</button>
+      </view>
+      <text v-if="actionHint" class="action-hint">{{ actionHint }}</text>
 
       <view class="summary-row">
         <view class="summary-pill">
@@ -265,6 +323,30 @@ function getMessageStatusLabel(status?: string | null) {
 .filter-chip--active {
   background: $color-primary;
   color: #fff;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
+}
+.action-link {
+  margin: 0;
+  padding: 8rpx 16rpx;
+  background: transparent;
+  color: $color-primary;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+.action-link[disabled] {
+  opacity: 0.5;
+}
+.action-hint {
+  display: block;
+  margin-bottom: 12rpx;
+  color: $color-muted;
+  font-size: 22rpx;
 }
 
 .summary-row {

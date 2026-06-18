@@ -1,6 +1,9 @@
 ﻿export type SessionUser = {
   id: string;
-  phone: string;
+  // Phone is null for users who registered via email or WeChat without
+  // linking a phone number.
+  phone: string | null;
+  email?: string | null;
   nickname: string;
   city: string;
   level: string;
@@ -32,6 +35,42 @@ export type SessionPayload = {
   user: SessionUser;
 };
 
+/**
+ * /auth/verify-code returns this when the phone isn't in the system yet,
+ * so the client can transition straight into the registration form
+ * without making the user request a second SMS.
+ */
+export type RegistrationHintPayload = {
+  requiresRegistration: true;
+  phone: string;
+};
+
+export type VerifyCodeResponse = SessionPayload | RegistrationHintPayload;
+
+export type RegisterPayload = {
+  phone: string;
+  code: string;
+  nickname: string;
+  city?: string;
+  level?: 'beginner' | 'intermediate' | 'advanced';
+};
+
+// ---- Email + password auth (H5 primary channel) ----
+export type LoginEmailPayload = {
+  email: string;
+  password: string;
+};
+
+export type RegisterEmailPayload = {
+  email: string;
+  password: string;
+  nickname: string;
+  city?: string;
+  level?: 'beginner' | 'intermediate' | 'advanced';
+};
+
+export type MatchLifecycle = 'upcoming' | 'live' | 'completed' | 'cancelled';
+
 export type MatchCard = {
   id: string;
   title: string;
@@ -44,12 +83,18 @@ export type MatchCard = {
   maxPlayers: number;
   openSlots: number;
   status?: 'open' | 'cancelled';
+  /** Derived phase: 'upcoming' | 'live' | 'completed' | 'cancelled'. */
+  lifecycle?: MatchLifecycle;
   coverUrl?: string | null;
   hostCreditScore: number;
   level: string;
   matchRate: number;
   city: string;
   score: number;
+  /** Populated by /matches and /matches/:id; absent on /matches/mine etc. */
+  venueLatitude?: number | null;
+  venueLongitude?: number | null;
+  venueAddress?: string | null;
 };
 
 export type MatchListResponse = {
@@ -59,12 +104,20 @@ export type MatchListResponse = {
 export type CreateMatchPayload = {
   title: string;
   venueId: string;
-  courtId: string;
-  slotId: string;
+  /** Either slotId (preset venue slot) or startTime (custom ISO) must be set. */
+  slotId?: string;
+  startTime?: string;
+  courtId?: string;
+  /** Free-text court label; can be filled in later via PATCH /matches/:id. */
+  courtName?: string;
   level: string;
   maxPlayers: number;
   startDate?: string;
   coverUrl?: string;
+};
+
+export type UpdateMatchPayload = {
+  courtName?: string;
 };
 
 export type UploadKind = 'avatar' | 'match-cover';
@@ -80,6 +133,9 @@ export type MatchOptionVenue = {
   city: string;
   district: string;
   distanceKm: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
   sortOrder: number;
   courts: Array<{
     id: string;

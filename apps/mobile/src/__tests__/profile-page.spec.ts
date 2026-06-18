@@ -34,7 +34,10 @@ describe('ProfilePage', () => {
                   id: 'match-hosted-1',
                   title: '我发起的徐汇晚场',
                   venueName: '徐家汇活力馆 6 号台',
-                  startTime: '2026-04-22T19:30:00+08:00',
+                  // Far-future date so the match stays under "未开始"
+                  // and renders inline (history matches collapse into
+                  // a tappable row that links to the dedicated page).
+                  startTime: '2099-04-22T19:30:00+08:00',
                   distanceKm: 1.2,
                   maxPlayers: 4,
                   openSlots: 2,
@@ -60,7 +63,7 @@ describe('ProfilePage', () => {
                   id: 'match-joined-1',
                   title: '我参加的静安午休局',
                   venueName: '静安寺白领馆 2 号台',
-                  startTime: '2026-04-24T12:30:00+08:00',
+                  startTime: '2099-04-24T12:30:00+08:00',
                   distanceKm: 3.2,
                   maxPlayers: 4,
                   openSlots: 1,
@@ -365,9 +368,11 @@ describe('ProfilePage', () => {
     });
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('已取消的徐汇晚场');
-      expect(wrapper.text()).toContain('已取消');
-      expect(wrapper.text()).toContain('球友会在消息中心看到通知');
+      // Cancelled match is now hidden behind a single "历史球局 (N 场) ›"
+      // entry row that links to /pages/history-matches (which merges
+      // hosted + joined history into one role-tagged list).
+      expect(wrapper.text()).toContain('历史球局');
+      expect(wrapper.find('[data-testid="history-entry"]').exists()).toBe(true);
     });
   });
 });

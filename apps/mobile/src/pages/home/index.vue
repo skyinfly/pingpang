@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useMatchesQuery } from '../../composables/useMatchesQuery';
 import { formatLevel } from '../../utils/copy';
+import LocationHeader from '../../components/LocationHeader.vue';
 
 function formatMatchTime(value?: string) {
   if (!value) {
@@ -20,7 +21,9 @@ function formatMatchTime(value?: string) {
   return `今晚 ${hours}:${minutes} 开局`;
 }
 
-const matchesQuery = useMatchesQuery({ city: '上海', level: 'intermediate' });
+// Home preview shows ALL open matches regardless of city/level so a new
+// user always sees activity. The square page is where filters live.
+const matchesQuery = useMatchesQuery({});
 const featuredMatch = computed(() => matchesQuery.data.value?.items[0] ?? null);
 const recommendedMatches = computed(() => (matchesQuery.data.value?.items ?? []).slice(0, 5));
 const heroEyebrow = computed(() => (featuredMatch.value ? '今晚推荐' : '今晚好局'));
@@ -54,6 +57,7 @@ function openMatchDetail(id: string) {
 
 <template>
   <view class="page">
+    <LocationHeader />
     <view class="hero">
       <text class="eyebrow">{{ heroEyebrow }}</text>
       <text class="title">{{ heroTitle }}</text>

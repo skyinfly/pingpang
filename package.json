@@ -26,5 +26,9 @@
     "start:api:prod": "pnpm --filter @pingpang/api start:prod",
     "release:verify": "node tools/release/verify-release.mjs",
     "verify": "node tools/verify-stack.mjs"
+  },
+  "devDependencies": {
+    "playwright-chromium": "^1.61.0",
+    "sharp": "^0.34.5"
   }
 }
