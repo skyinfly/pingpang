@@ -791,7 +791,7 @@ async function handleCancelMatch() {
     // Surface the backend's actual reason so the user knows *why* — most
     // failures here are 409 "match already started" or "already
     // cancelled", both of which the user can resolve by refreshing.
-    const resp = error as { statusCode?: number; data?: { message?: string } };
+    const resp = error as { statusCode?: number; data?: { message?: string | string[] } };
     const status = resp.statusCode ?? 0;
     const serverMessage =
       typeof resp.data?.message === 'string'

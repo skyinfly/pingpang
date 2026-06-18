@@ -52,11 +52,15 @@ describe('HomePage', () => {
       },
     });
 
+    const expectedDate = new Date('2026-04-23T19:30:00+08:00');
+    const hours = String(expectedDate.getHours()).padStart(2, '0');
+    const minutes = String(expectedDate.getMinutes()).padStart(2, '0');
+
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('今晚推荐');
       expect(wrapper.text()).toContain('徐汇晚间上分局');
       expect(wrapper.text()).toContain('徐家汇活力馆 3 号台');
-      expect(wrapper.text()).toContain('今晚 19:30 开局');
+      expect(wrapper.text()).toContain(`今晚 ${hours}:${minutes} 开局`);
       expect(wrapper.text()).toContain('发起约球');
     });
 

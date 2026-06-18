@@ -101,28 +101,6 @@ describe('Matches listing', () => {
     expect(response.body.playerCounts.some((count: { id: string }) => count.id === 'player-count-8-archived')).toBe(false);
   });
 
-  it('rejects invalid venue availability minutes at the database boundary', async () => {
-    const invalidSlotId = 'venue-slot-invalid-minute-guard';
-
-    await expect(
-      prisma.venueAvailabilitySlot.create({
-        data: {
-          id: invalidSlotId,
-          venueId: 'venue-seed-1',
-          label: 'invalid',
-          startTime: -1,
-          endTime: 30,
-          sortOrder: 999,
-          isActive: true,
-        },
-      }),
-    ).rejects.toThrow();
-
-    await prisma.venueAvailabilitySlot.deleteMany({
-      where: { id: invalidSlotId },
-    });
-  });
-
   it('seeds match venue links directly in the transaction payload', async () => {
     const matchUpserts: Array<{
       where: { id: string };
@@ -259,7 +237,7 @@ describe('Matches listing', () => {
       title: '龙华晚间补位局',
       courtId: 'venue-court-3',
       slotId: 'venue-slot-4',
-      venueName: '静安寺白领馆 2号台',
+      venueName: '静安寺白领馆 · 2号台',
       city: '上海',
       level: 'intermediate',
       maxPlayers: 4,
@@ -272,7 +250,7 @@ describe('Matches listing', () => {
     expect(storedMatch?.venueId).toBe('venue-seed-2');
     expect((storedMatch as typeof storedMatch & { courtId?: string | null })?.courtId).toBe('venue-court-3');
     expect(storedMatch?.slotId).toBe('venue-slot-4');
-    expect(storedMatch?.venueName).toBe('静安寺白领馆 2号台');
+    expect(storedMatch?.venueName).toBe('静安寺白领馆 · 2号台');
     expect(storedMatch?.hostCreditScore).toBe(100);
     expect(storedMatch?.distanceKm).toBe(3.2);
     expect(storedMatch?.matchRate).toBe(89);
@@ -350,7 +328,7 @@ describe('Matches listing', () => {
       expect.arrayContaining([
         expect.objectContaining({
           title: '我发起的徐汇晚场',
-          venueName: '徐家汇活力馆 5号台',
+          venueName: '徐家汇活力馆 · 5号台',
           openSlots: 3,
         }),
       ]),

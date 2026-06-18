@@ -245,12 +245,12 @@ describe('Auth flow', () => {
   it('email: rejects register when email already in use', async () => {
     await request(app.getHttpServer())
       .post('/auth/email/register')
-      .send({ email: 'dup@pingpang.app', password: 'goodPassword1', nickname: 'A' })
+      .send({ email: 'dup@pingpang.app', password: 'goodPassword1', nickname: 'UserA' })
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/auth/email/register')
-      .send({ email: 'dup@pingpang.app', password: 'otherPassword2', nickname: 'B' })
+      .send({ email: 'dup@pingpang.app', password: 'otherPassword2', nickname: 'UserB' })
       .expect(409);
   });
 
