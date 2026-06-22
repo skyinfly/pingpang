@@ -11,6 +11,7 @@ import {
   fetchReviewProfile,
   listHostedApplications,
   rejectHostedApplication,
+  leaveMatch,
   reportUser,
   submitMatchCheckIn,
   submitReview,
@@ -76,6 +77,39 @@ const memberReviewError = ref<Record<string, string>>({});
 // Court label is editable post-creation by the host (see PATCH /matches/:id
 // on the API). The page-level draft + busy state lives here so the
 // "现场球台" panel can render independent of other forms.
+// Member-leave (pending withdraw / approved drop-out). Same endpoint
+// covers both — backend dispatches by the application's current status.
+const leaving = ref(false);
+async function handleLeaveMatch() {
+  if (!match.value || leaving.value || isHost.value) return;
+  const isApproved = isMember.value;
+  const confirmCopy = isApproved
+    ? '退出后会释放你的席位，需要重新申请才能再次加入。确定退出吗？'
+    : '撤回申请后，主理人就看不到这条申请了。确定撤回吗？';
+  const proceed = await modal({
+    title: isApproved ? '退出球局' : '撤回申请',
+    content: confirmCopy,
+    confirmText: isApproved ? '退出' : '撤回',
+    cancelText: '再想想',
+  });
+  if (!proceed.confirm) return;
+  leaving.value = true;
+  try {
+    await leaveMatch(match.value.id);
+    applied.value = false;
+    myApplicationStatus.value = { status: 'none' };
+    toast(isApproved ? '已退出球局' : '已撤回申请', 'success');
+    // Re-fetch detail so openSlots + membership state refresh.
+    if (match.value?.id) await loadMatch(match.value.id);
+    await loadMyApplicationStatus();
+    void joinedMatchesQuery.refetch?.();
+  } catch {
+    toast('操作失败，请稍后再试', 'error');
+  } finally {
+    leaving.value = false;
+  }
+}
+
 const courtNameDraft = ref('');
 const courtNameSaving = ref(false);
 const courtNameError = ref('');
@@ -1034,6 +1068,26 @@ if (initialMatchId) {
             </text>
           </view>
         </view>
+      </view>
+
+      <view
+        v-if="!isHost && (isMember || isPendingApplication) && !isCancelled && !isStarted"
+        class="panel panel-last"
+      >
+        <text class="panel-label">{{ isMember ? '退出球局' : '撤回申请' }}</text>
+        <text class="panel-value">
+          {{ isMember
+            ? '临时有事赶不上？退出会释放席位，主理人会收到系统通知，可以再找球友补位。'
+            : '主理人还没确认，可以先撤回这条申请。' }}
+        </text>
+        <button
+          class="application-button application-button--secondary"
+          data-testid="leave-match"
+          :disabled="leaving"
+          @click="handleLeaveMatch"
+        >
+          {{ leaving ? '处理中…' : isMember ? '退出球局' : '撤回申请' }}
+        </button>
       </view>
 
       <view v-if="!isHost && isMember && !isCancelled" class="panel panel-last">

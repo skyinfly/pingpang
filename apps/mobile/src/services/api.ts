@@ -339,6 +339,13 @@ export function applyToMatch(id: string) {
   });
 }
 
+export function leaveMatch(id: string) {
+  return http<{ ok: true; matchId: string; wasApproved: boolean }>(
+    `/matches/${encodeURIComponent(id)}/applications/me`,
+    { method: 'DELETE', headers: withAuthHeaders() },
+  );
+}
+
 export function cancelHostedMatch(matchId: string, reason?: string) {
   return http<MatchCard>(`/matches/${encodeURIComponent(matchId)}/cancel`, {
     method: 'POST',
@@ -505,6 +512,7 @@ export const apiClient = {
   createMatch,
   updateHostedMatch,
   applyToMatch,
+  leaveMatch,
   cancelHostedMatch,
   deleteHostedMatch,
   fetchMessageSummary,

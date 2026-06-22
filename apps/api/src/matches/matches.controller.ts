@@ -124,6 +124,18 @@ export class MatchesController {
     return this.matchesService.apply(id, user.id);
   }
 
+  /**
+   * Member-initiated leave / pending-withdraw. Handles both the
+   * "申请发出去想撤回" case and the "已批准但临时有事" case in one
+   * endpoint, dispatched by the application's current status. Hosts
+   * cannot use this — they cancel the whole match instead.
+   */
+  @Delete('matches/:id/applications/me')
+  @UseGuards(DevBearerGuard)
+  leaveOwn(@Param('id') id: string, @AuthUser() user: SessionUser) {
+    return this.matchesService.leaveOwnApplication(id, user.id);
+  }
+
   @Post('matches/:id/applications/:applicationId/approve')
   @UseGuards(DevBearerGuard)
   approve(

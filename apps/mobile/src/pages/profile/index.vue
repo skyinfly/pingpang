@@ -309,14 +309,16 @@ function openLegalPage(path: string) {
       <!-- Unified history entry: hosted + joined combined into one
            tappable row that links to /pages/history-matches. Both
            halves are merged + role-tagged on that page. -->
+      <!-- Always shown so new users can discover the history page even
+           before they've finished a match. Empty state lives on that
+           page itself. -->
       <view
-        v-if="historyTotal > 0"
         class="history-entry"
         data-testid="history-entry"
         @click="openHistory()"
       >
         <text class="history-entry-label">历史球局</text>
-        <text class="history-entry-meta">{{ historyTotal }} 场</text>
+        <text class="history-entry-meta">{{ historyTotal > 0 ? `${historyTotal} 场` : '暂无' }}</text>
         <text class="history-entry-arrow">›</text>
       </view>
 

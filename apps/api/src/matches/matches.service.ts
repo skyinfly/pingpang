@@ -613,6 +613,95 @@ export class MatchesService {
     }
   }
 
+  /**
+   * Member-initiated leave / pending-withdraw. Lets the player back out
+   * without needing the host to disband the whole match.
+   *
+   *   - pending application      → delete (no notification needed; host
+   *                                hadn't acted yet anyway)
+   *   - approved application     → mark withdrawn + remove from
+   *                                ChatThreadParticipant + bump
+   *                                Match.openSlots back up + system
+   *                                message to the host so they can
+   *                                source a replacement.
+   *   - host trying to "leave"   → 409: hosts use cancelMatch instead
+   *   - rejected / none / past   → 409
+   */
+  async leaveOwnApplication(matchId: string, userId: string) {
+    const match = await this.requireMatch(matchId);
+
+    if (match.hostUserId === userId) {
+      throw new ConflictException('host cannot leave own match — use cancel instead');
+    }
+    if (match.status === 'cancelled') {
+      throw new ConflictException(`match ${matchId} has been cancelled`);
+    }
+    if (match.startTime.getTime() <= Date.now()) {
+      throw new ConflictException(`match ${matchId} has already started`);
+    }
+
+    const application = await this.prisma.matchApplication.findFirst({
+      where: { matchId, userId, status: { in: ['pending', 'approved'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!application) {
+      throw new NotFoundException(`No active application for user ${userId} on match ${matchId}`);
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true },
+    });
+    const nickname = user?.nickname ?? '球友';
+    const wasApproved = application.status === 'approved';
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.matchApplication.delete({ where: { id: application.id } });
+
+      if (wasApproved) {
+        // Drop chat membership and free the slot so the host (or auto
+        // listing) can re-fill it.
+        await tx.chatThreadParticipant
+          .delete({
+            where: { threadId_userId: { threadId: matchId, userId } },
+          })
+          .catch(() => undefined);
+
+        await tx.match.update({
+          where: { id: matchId },
+          data: { openSlots: { increment: 1 } },
+        });
+
+        await tx.message.create({
+          data: {
+            userId: match.hostUserId,
+            kind: 'system',
+            title: '有球友退出了球局',
+            content: `${nickname} 退出了「${match.title}」，可以在广场上再找一位补位。`,
+            senderName: '系统',
+            status: 'cancelled',
+            matchId,
+          },
+        });
+      }
+
+      // Clean up any prior invite-style notifications the host was
+      // looking at for this applicant — they're stale now.
+      await tx.message.updateMany({
+        where: {
+          userId: match.hostUserId,
+          matchId,
+          senderId: userId,
+          kind: 'invite',
+          status: 'pending',
+        },
+        data: { status: 'cancelled', isRead: true },
+      });
+    });
+
+    return { ok: true as const, matchId, wasApproved };
+  }
+
   async approveApplication(matchId: string, applicationId: string, hostUserId: string) {
     const match = await this.requireHostOwnedMatch(matchId, hostUserId);
     const application = await this.requireApplication(matchId, applicationId);
