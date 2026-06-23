@@ -132,11 +132,26 @@ watch(
   { immediate: true },
 );
 
-const timeline = computed(() =>
-  [...(messagesQuery.data.value?.items ?? []), ...createdMessages.value].sort((left, right) =>
-    left.createdAt.localeCompare(right.createdAt),
-  ),
-);
+/**
+ * Merge the server-side message list with optimistically appended ones,
+ * but dedupe by id. Without dedupe, sending one message renders it
+ * twice: once from the local createdMessages append (instant), and once
+ * more after invalidateQueries refetches /messages and pulls in the
+ * server copy of the same message.
+ */
+const timeline = computed(() => {
+  const seen = new Set<string>();
+  const merged: MessagePreview[] = [];
+  for (const msg of [
+    ...(messagesQuery.data.value?.items ?? []),
+    ...createdMessages.value,
+  ]) {
+    if (seen.has(msg.id)) continue;
+    seen.add(msg.id);
+    merged.push(msg);
+  }
+  return merged.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+});
 
 const sending = ref(false);
 async function handleSend() {
