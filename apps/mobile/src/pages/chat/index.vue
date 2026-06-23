@@ -7,7 +7,6 @@ import { useChatMessagesQuery } from '../../composables/useChatMessagesQuery';
 import { useThreadDetailQuery } from '../../composables/useThreadDetailQuery';
 import { useAuthStore } from '../../stores/auth';
 import { formatThreadStatus } from '../../utils/copy';
-import LocationHeader from '../../components/LocationHeader.vue';
 
 const authStore = useAuthStore();
 const currentUserId = computed(() => authStore.user?.id ?? '');
@@ -161,7 +160,6 @@ async function handleSend() {
 
 <template>
   <view class="page">
-    <LocationHeader />
     <template v-if="!isAuthenticated">
       <view class="empty-state empty-state--full">
         <text class="empty-title">登录后进入局内聊天</text>
