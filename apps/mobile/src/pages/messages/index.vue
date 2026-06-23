@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useMessagesQuery } from '../../composables/useMessagesQuery';
 import { useAuthStore } from '../../stores/auth';
-import { formatThreadStatus } from '../../utils/copy';
+import { deriveThreadStatus, formatThreadStatus } from '../../utils/copy';
 import { clearMessages, markMessagesRead } from '../../services/api';
 import LocationHeader from '../../components/LocationHeader.vue';
 
@@ -109,8 +109,37 @@ function openSquare() {
   });
 }
 
-function formatThreadMeta(status?: string | null, unreadCount = 0, participantCount = 0) {
-  return `${formatThreadStatus(status)} · ${unreadCount} 条未读 · ${participantCount} 位球友`;
+function formatThreadMeta(
+  status: string | null | undefined,
+  scheduledAt: string | null | undefined,
+  unreadCount = 0,
+  participantCount = 0,
+) {
+  const derived = deriveThreadStatus(status, scheduledAt);
+  return `${formatThreadStatus(derived)} · ${unreadCount} 条未读 · ${participantCount} 位球友`;
+}
+
+/**
+ * "2026-06-18 周三 19:30" — match's scheduled time rendered for the
+ * chat card subtitle. Empty for missing/invalid ISO.
+ */
+function formatScheduledAt(iso?: string | null) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const dateText = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  }).format(date);
+  const timeText = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+  return `${dateText} ${timeText}`;
 }
 
 function getMessageStatusLabel(status?: string | null) {
@@ -214,9 +243,12 @@ function getMessageStatusLabel(status?: string | null) {
           @click="openChatThread(item.id)"
         >
           <text class="notice-title">{{ item.title }}</text>
-          <text class="notice-copy">{{ item.venueName }}</text>
+          <text class="notice-copy">📍 {{ item.venueName }}</text>
+          <text class="notice-copy">🕒 {{ formatScheduledAt(item.scheduledAt) }}</text>
           <text class="notice-copy">{{ item.latestMessagePreview }}</text>
-          <text class="notice-meta">{{ formatThreadMeta(item.status, item.unreadCount, item.participantCount) }}</text>
+          <text class="notice-meta">
+            {{ formatThreadMeta(item.status, item.scheduledAt, item.unreadCount, item.participantCount) }}
+          </text>
         </view>
 
         <view
