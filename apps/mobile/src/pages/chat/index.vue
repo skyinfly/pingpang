@@ -7,6 +7,7 @@ import { useChatMessagesQuery } from '../../composables/useChatMessagesQuery';
 import { useThreadDetailQuery } from '../../composables/useThreadDetailQuery';
 import { useAuthStore } from '../../stores/auth';
 import { formatThreadStatus } from '../../utils/copy';
+import { toast } from '../../utils/toast';
 
 const authStore = useAuthStore();
 const currentUserId = computed(() => authStore.user?.id ?? '');
@@ -85,6 +86,12 @@ const threadDetailQuery = useThreadDetailQuery({
 const thread = computed(() => threadDetailQuery.data.value?.thread ?? null);
 const participants = computed(() => threadDetailQuery.data.value?.participants ?? []);
 const canUseThread = computed(() => Boolean(isAuthenticated.value && activeThreadId.value));
+// Backend returns 409 on POST when the underlying match/thread is
+// cancelled — sweep job auto-cancels open matches past their startTime
+// with no joiners, and hosts can dissolve manually. Surface this
+// clearly instead of letting the input look usable.
+const isThreadCancelled = computed(() => thread.value?.status === 'cancelled');
+const composerDisabled = computed(() => isThreadCancelled.value || !canUseThread.value);
 // Detect "not a member" cleanly. Backend returns 403 from
 // `/chat-threads/:id` when the user isn't host or approved member,
 // so we trust that as the canonical signal. Without this guard the
@@ -131,30 +138,46 @@ const timeline = computed(() =>
   ),
 );
 
+const sending = ref(false);
 async function handleSend() {
-  if (!canUseThread.value) {
+  if (!canUseThread.value || sending.value) return;
+  if (isThreadCancelled.value) {
+    toast('球局已取消，无法发送消息', 'error');
     return;
   }
-
   const content = draft.value.trim();
+  if (!content) return;
 
-  if (!content) {
-    return;
+  sending.value = true;
+  try {
+    const created = await createThreadMessage(activeThreadId.value, content);
+    createdMessages.value = [...createdMessages.value, created];
+    draft.value = '';
+    void queryClient.invalidateQueries({
+      queryKey: ['chat-messages', currentUserId.value, activeThreadId.value],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ['message-center', currentUserId.value],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ['chat-thread-detail', currentUserId.value, activeThreadId.value],
+    });
+  } catch (error) {
+    const resp = error as { statusCode?: number; data?: { message?: string } };
+    if (resp.statusCode === 409) {
+      toast('球局已取消，无法发送消息', 'error');
+      // Refresh thread so the cancelled banner shows.
+      void queryClient.invalidateQueries({
+        queryKey: ['chat-thread-detail', currentUserId.value, activeThreadId.value],
+      });
+    } else if (resp.statusCode === 403) {
+      toast('你不是局内成员，无法发送消息', 'error');
+    } else {
+      toast('发送失败，请稍后再试', 'error');
+    }
+  } finally {
+    sending.value = false;
   }
-
-  const created = await createThreadMessage(activeThreadId.value, content);
-
-  createdMessages.value = [...createdMessages.value, created];
-  draft.value = '';
-  void queryClient.invalidateQueries({
-    queryKey: ['chat-messages', currentUserId.value, activeThreadId.value],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: ['message-center', currentUserId.value],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: ['chat-thread-detail', currentUserId.value, activeThreadId.value],
-  });
 }
 </script>
 
@@ -238,10 +261,24 @@ async function handleSend() {
         </view>
       </view>
 
+      <view v-if="isThreadCancelled" class="cancelled-banner" data-testid="chat-cancelled-banner">
+        <text>球局已取消，聊天已封存。</text>
+      </view>
       <view class="composer-shell" data-testid="chat-composer">
         <view class="composer">
-          <input v-model="draft" class="composer-input" placeholder="和球友说点什么..." />
-          <button class="composer-button" @click="handleSend">发送</button>
+          <input
+            v-model="draft"
+            class="composer-input"
+            :placeholder="isThreadCancelled ? '球局已取消' : '和球友说点什么...'"
+            :disabled="composerDisabled"
+          />
+          <button
+            class="composer-button"
+            :disabled="composerDisabled || sending"
+            @click="handleSend"
+          >
+            {{ sending ? '发送中…' : '发送' }}
+          </button>
         </view>
       </view>
     </template>
@@ -452,6 +489,17 @@ async function handleSend() {
   color: $color-muted;
   font-size: 24rpx;
   line-height: 1.5;
+}
+
+.cancelled-banner {
+  flex-shrink: 0;
+  margin: 12rpx 0;
+  padding: 14rpx 20rpx;
+  border-radius: 16rpx;
+  background: rgba(209, 67, 47, 0.10);
+  color: #d1432f;
+  font-size: 24rpx;
+  text-align: center;
 }
 
 .composer-shell {
