@@ -62,7 +62,11 @@ const filteredMessages = computed(() => {
   const items = messagesQuery.data.value?.items ?? [];
 
   if (activeFilter.value === 'all') {
-    return items;
+    // Chat-kind messages are already represented by the thread card
+    // above — every chat message creates a Message row per participant
+    // and they bled in as duplicate cards under "全部". Filter them out
+    // here so the user sees the thread once, not once-per-message.
+    return items.filter((item) => item.kind !== 'chat');
   }
 
   if (activeFilter.value === 'chat') {
