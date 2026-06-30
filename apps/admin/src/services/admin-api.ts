@@ -270,17 +270,17 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
   return {
     login: (payload: Record<string, string>) => send<{ token: string }>('POST', '/admin/login', payload),
     getSummary: () => get<AdminSummary>('/admin/summary'),
-    listMatches: (search = '') =>
+    listMatches: (search = '', page = 1, pageSize = 20) =>
       get<{ items: AdminMatchRow[]; total: number; page: number; pageSize: number }>(
-        search ? `/admin/matches?search=${encodeURIComponent(search)}` : '/admin/matches',
+        `/admin/matches?page=${page}&pageSize=${pageSize}${search ? `&search=${encodeURIComponent(search)}` : ''}`
       ),
-    listUsers: (search = '') =>
+    listUsers: (search = '', page = 1, pageSize = 20) =>
       get<{ items: AdminUserRow[]; total: number; page: number; pageSize: number }>(
-        search ? `/admin/users?search=${encodeURIComponent(search)}` : '/admin/users',
+        `/admin/users?page=${page}&pageSize=${pageSize}${search ? `&search=${encodeURIComponent(search)}` : ''}`
       ),
-    listVenues: (search = '') =>
+    listVenues: (search = '', page = 1, pageSize = 20) =>
       get<{ items: AdminVenueRow[]; total: number; page: number; pageSize: number }>(
-        search ? `/admin/venues?search=${encodeURIComponent(search)}` : '/admin/venues',
+        `/admin/venues?page=${page}&pageSize=${pageSize}${search ? `&search=${encodeURIComponent(search)}` : ''}`
       ),
     createVenue: (payload: AdminVenuePayload) => send<AdminVenueRow>('POST', '/admin/venues', payload),
     updateVenue: (id: string, payload: Partial<AdminVenuePayload>) =>
@@ -312,12 +312,12 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
       send<{ items: AdminApplicationRow[]; total: number; page: number; pageSize: number }>('POST', `/admin/applications/${applicationId}/approve`, undefined),
     rejectApplication: (applicationId: string, decisionReason?: string) =>
       send<{ items: AdminApplicationRow[]; total: number; page: number; pageSize: number }>('POST', `/admin/applications/${applicationId}/reject`, { decisionReason }),
-    listReviews: (filters: { revieweeId?: string; reviewerId?: string; minScore?: number; maxScore?: number } = {}) => {
+    listReviews: (filters: { revieweeId?: string; reviewerId?: string; minScore?: number; maxScore?: number; page?: number; pageSize?: number } = {}) => {
       const query = Object.entries(filters)
         .filter(([, value]) => value !== undefined && value !== '')
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
         .join('&');
-      return get<{ items: AdminReviewRow[] }>(query ? `/admin/reviews?${query}` : '/admin/reviews');
+      return get<{ items: AdminReviewRow[]; total: number; page: number; pageSize: number }>(query ? `/admin/reviews?${query}` : '/admin/reviews');
     },
     deleteReview: (reviewId: string) => remove(`/admin/reviews/${reviewId}`),
     listReports: (filters: { status?: string; page?: number; pageSize?: number } = {}) => {

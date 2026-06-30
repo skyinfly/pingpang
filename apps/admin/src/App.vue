@@ -19,6 +19,7 @@ import {
 } from './services/admin-api';
 import { DEFAULT_ADMIN_TOKEN, getStoredAdminToken, saveAdminToken } from './services/admin-token';
 import EChart from './components/EChart.vue';
+import Pagination from './components/Pagination.vue';
 
 type TabKey = 'analytics' | 'applications' | 'matches' | 'users' | 'venues' | 'reviews' | 'reports';
 type EditorState = {
@@ -60,6 +61,20 @@ const venueSearch = ref('');
 const matchTotal = ref(0);
 const userTotal = ref(0);
 const venueTotal = ref(0);
+const matchPage = ref(1);
+const matchPageSize = ref(20);
+const userPage = ref(1);
+const userPageSize = ref(20);
+const venuePage = ref(1);
+const venuePageSize = ref(20);
+const applicationPageSize = ref(20);
+const reviewPage = ref(1);
+const reviewPageSize = ref(20);
+const reviewTotal = ref(0);
+const reportPage = ref(1);
+const reportPageSize = ref(20);
+const reportTotal = ref(0);
+
 const applicationTotal = ref(0);
 const applicationPage = ref(1);
 const matchListLoading = ref(false);
@@ -86,9 +101,10 @@ const venueSearchTimer: { value: ReturnType<typeof setTimeout> | null } = { valu
 async function reloadMatches(search = matchSearch.value) {
   matchListLoading.value = true;
   try {
-    const response = await api.value.listMatches(search.trim());
+    const response = await api.value.listMatches(search.trim(), matchPage.value);
     matches.value = response.items;
     matchTotal.value = response.total;
+    matchPageSize.value = response.pageSize;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '球局列表加载失败';
   } finally {
@@ -99,9 +115,10 @@ async function reloadMatches(search = matchSearch.value) {
 async function reloadUsers(search = userSearch.value) {
   userListLoading.value = true;
   try {
-    const response = await api.value.listUsers(search.trim());
+    const response = await api.value.listUsers(search.trim(), userPage.value);
     users.value = response.items;
     userTotal.value = response.total;
+    userPageSize.value = response.pageSize;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '用户列表加载失败';
   } finally {
@@ -112,9 +129,10 @@ async function reloadUsers(search = userSearch.value) {
 async function reloadVenues(search = venueSearch.value) {
   venueListLoading.value = true;
   try {
-    const response = await api.value.listVenues(search.trim());
+    const response = await api.value.listVenues(search.trim(), venuePage.value);
     venues.value = response.items;
     venueTotal.value = response.total;
+    venuePageSize.value = response.pageSize;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '球馆列表加载失败';
   } finally {
@@ -198,8 +216,8 @@ async function loadDashboard() {
       api.value.listUsers(),
       api.value.listVenues(),
       api.value.listApplications('pending', applicationPage.value),
-      api.value.listReviews(),
-      api.value.listReports({ status: 'open' }),
+      api.value.listReviews({ page: reviewPage.value }),
+      api.value.listReports({ status: 'open', page: reportPage.value }),
     ]);
 
     summary.value = summaryPayload;
@@ -212,9 +230,42 @@ async function loadDashboard() {
     applications.value = applicationPayload.items;
     applicationTotal.value = applicationPayload.total;
     reviews.value = reviewPayload.items;
+    reviewTotal.value = reviewPayload.total;
+    reviewPageSize.value = reviewPayload.pageSize;
     reports.value = reportPayload.items;
+    reportTotal.value = reportPayload.total;
+    reportPageSize.value = reportPayload.pageSize;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '后台数据请求失败，请稍后重试';
+  } finally {
+    loading.value = false;
+  }
+}
+
+
+async function reloadReviews() {
+  loading.value = true;
+  try {
+    const response = await api.value.listReviews({ page: reviewPage.value });
+    reviews.value = response.items;
+    reviewTotal.value = response.total;
+    reviewPageSize.value = response.pageSize;
+  } catch (error) {
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function reloadReports() {
+  loading.value = true;
+  try {
+    const response = await api.value.listReports({ status: 'open', page: reportPage.value });
+    reports.value = response.items;
+    reportTotal.value = response.total;
+    reportPageSize.value = response.pageSize;
+  } catch (error) {
+    console.error(error);
   } finally {
     loading.value = false;
   }
@@ -226,6 +277,7 @@ async function reloadApplications() {
     const response = await api.value.listApplications('pending', applicationPage.value);
     applications.value = response.items;
     applicationTotal.value = response.total;
+    applicationPageSize.value = response.pageSize;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '待审列表加载失败';
   } finally {
@@ -464,21 +516,6 @@ async function saveTokenAndReload() {
     token.value = '';
     saveAdminToken('');
   } finally {
-    savingToken.value = false;
-  }
-}
-
-function prevApplicationPage() {
-  if (applicationPage.value > 1) {
-    applicationPage.value--;
-    void reloadApplications();
-  }
-}
-
-function nextApplicationPage() {
-  if (applicationPage.value * 20 < applicationTotal.value) {
-    applicationPage.value++;
-    void reloadApplications();
   }
 }
 
@@ -498,6 +535,11 @@ function switchTab(tab: TabKey) {
 watch(activeTab, (tab) => {
   if (tab === 'analytics') void loadAnalytics();
   if (tab === 'applications') void reloadApplications();
+  if (tab === 'matches') void reloadMatches();
+  if (tab === 'users') void reloadUsers();
+  if (tab === 'venues') void reloadVenues();
+  if (tab === 'reviews') void reloadReviews();
+  if (tab === 'reports') void reloadReports();
 });
 
 function openCreate(resource: TabKey) {
@@ -1236,11 +1278,7 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
-          <div class="pagination" v-if="applicationTotal > 0">
-            <button type="button" class="ghost-action" :disabled="applicationPage <= 1" @click="prevApplicationPage">上一页</button>
-            <span class="pagination-info">第 {{ applicationPage }} 页 / 共 {{ Math.ceil(applicationTotal / 20) }} 页 (总 {{ applicationTotal }} 条)</span>
-            <button type="button" class="ghost-action" :disabled="applicationPage * 20 >= applicationTotal" @click="nextApplicationPage">下一页</button>
-          </div>
+          <Pagination v-if="applicationTotal > 0" v-model:page="applicationPage" :page-size="applicationPageSize" :total="applicationTotal" @change="reloadApplications" />
         </div>
 
         <div v-if="activeTab === 'matches'" class="table-search">
@@ -1731,14 +1769,7 @@ h1 {
   background: #fffdf7;
 }
 
-.pagination {
-  padding: 20px;
-  justify-content: flex-end;
-}
-.pagination-info {
-  font-size: 13px;
-  color: #657168;
-}
+
 
 .token-row button,
 .tabs button,
