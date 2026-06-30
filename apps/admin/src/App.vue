@@ -436,12 +436,20 @@ async function refreshSummary() {
   }
 }
 
-function saveTokenAndReload() {
+async function saveTokenAndReload() {
   savingToken.value = true;
-  saveAdminToken(token.value);
-  void loadDashboard().finally(() => {
+  try {
+    const res = await api.value.login({ username: username.value, password: password.value });
+    token.value = res.token;
+    saveAdminToken(token.value);
+    await loadDashboard();
+  } catch (e) {
+    errorMessage.value = '登录失败，请检查账号密码';
+    token.value = '';
+    saveAdminToken('');
+  } finally {
     savingToken.value = false;
-  });
+  }
 }
 
 function switchTab(tab: TabKey) {
