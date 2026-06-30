@@ -1339,6 +1339,7 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+          <Pagination v-if="matchTotal > 0" v-model:page="matchPage" :page-size="matchPageSize" :total="matchTotal" @change="reloadMatches" />
         </div>
 
         <div v-if="activeTab === 'users'" class="table-search">
@@ -1384,6 +1385,7 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+          <Pagination v-if="userTotal > 0" v-model:page="userPage" :page-size="userPageSize" :total="userTotal" @change="reloadUsers" />
         </div>
 
         <div v-if="activeTab === 'venues'" class="table-search">
@@ -1547,6 +1549,7 @@ onMounted(() => {
               </template>
             </tbody>
           </table>
+          <Pagination v-if="venueTotal > 0" v-model:page="venuePage" :page-size="venuePageSize" :total="venueTotal" @change="reloadVenues" />
         </div>
 
         <div v-if="activeTab === 'reviews'" class="table-wrap">
@@ -1599,6 +1602,7 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+          <Pagination v-if="reviewTotal > 0" v-model:page="reviewPage" :page-size="reviewPageSize" :total="reviewTotal" @change="reloadReviews" />
         </div>
 
         <div v-if="activeTab === 'reports'" class="table-wrap">
@@ -1662,6 +1666,7 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+          <Pagination v-if="reportTotal > 0" v-model:page="reportPage" :page-size="reportPageSize" :total="reportTotal" @change="reloadReports" />
         </div>
       </section>
     </template>
