@@ -306,12 +306,12 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
     updateSlot: (slotId: string, payload: AdminSlotPayload) =>
       send<AdminVenueRow>('PATCH', `/admin/slots/${slotId}`, payload),
     deleteSlot: (slotId: string) => removeReturning<AdminVenueRow>(`/admin/slots/${slotId}`),
-    listApplications: (status: 'pending' | 'approved' | 'rejected' = 'pending') =>
-      get<{ items: AdminApplicationRow[] }>(`/admin/applications?status=${status}`),
+    listApplications: (status: 'pending' | 'approved' | 'rejected' = 'pending', page: number = 1, pageSize: number = 20) =>
+      get<{ items: AdminApplicationRow[]; total: number; page: number; pageSize: number }>(`/admin/applications?status=${status}&page=${page}&pageSize=${pageSize}`),
     approveApplication: (applicationId: string) =>
-      send<{ items: AdminApplicationRow[] }>('POST', `/admin/applications/${applicationId}/approve`, {}),
-    rejectApplication: (applicationId: string, reason?: string) =>
-      send<{ items: AdminApplicationRow[] }>('POST', `/admin/applications/${applicationId}/reject`, reason ? { reason } : {}),
+      send<{ items: AdminApplicationRow[]; total: number; page: number; pageSize: number }>('POST', `/admin/applications/${applicationId}/approve`, undefined),
+    rejectApplication: (applicationId: string, decisionReason?: string) =>
+      send<{ items: AdminApplicationRow[]; total: number; page: number; pageSize: number }>('POST', `/admin/applications/${applicationId}/reject`, { decisionReason }),
     listReviews: (filters: { revieweeId?: string; reviewerId?: string; minScore?: number; maxScore?: number } = {}) => {
       const query = Object.entries(filters)
         .filter(([, value]) => value !== undefined && value !== '')

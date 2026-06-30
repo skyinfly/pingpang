@@ -60,6 +60,8 @@ const venueSearch = ref('');
 const matchTotal = ref(0);
 const userTotal = ref(0);
 const venueTotal = ref(0);
+const applicationTotal = ref(0);
+const applicationPage = ref(1);
 const matchListLoading = ref(false);
 const userListLoading = ref(false);
 const venueListLoading = ref(false);
@@ -195,7 +197,7 @@ async function loadDashboard() {
       api.value.listMatches(),
       api.value.listUsers(),
       api.value.listVenues(),
-      api.value.listApplications('pending'),
+      api.value.listApplications('pending', applicationPage.value),
       api.value.listReviews(),
       api.value.listReports({ status: 'open' }),
     ]);
@@ -208,10 +210,24 @@ async function loadDashboard() {
     venues.value = venuePayload.items;
     venueTotal.value = venuePayload.total;
     applications.value = applicationPayload.items;
+    applicationTotal.value = applicationPayload.total;
     reviews.value = reviewPayload.items;
     reports.value = reportPayload.items;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '后台数据请求失败，请稍后重试';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function reloadApplications() {
+  loading.value = true;
+  try {
+    const response = await api.value.listApplications('pending', applicationPage.value);
+    applications.value = response.items;
+    applicationTotal.value = response.total;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '待审列表加载失败';
   } finally {
     loading.value = false;
   }
@@ -222,8 +238,8 @@ async function approveApplication(applicationId: string) {
   errorMessage.value = '';
 
   try {
-    const response = await api.value.approveApplication(applicationId);
-    applications.value = response.items;
+    await api.value.approveApplication(applicationId);
+    await reloadApplications();
     const [matchPayload] = await Promise.all([api.value.listMatches(), refreshSummary()]);
     matches.value = matchPayload.items;
   } catch (error) {
@@ -418,8 +434,8 @@ async function rejectApplication(applicationId: string) {
 
   try {
     const reason = window.prompt('选填：拒绝原因（留空使用默认文案）') ?? undefined;
-    const response = await api.value.rejectApplication(applicationId, reason?.trim() ? reason.trim() : undefined);
-    applications.value = response.items;
+    await api.value.rejectApplication(applicationId, reason?.trim() ? reason.trim() : undefined);
+    await reloadApplications();
     void refreshSummary();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '拒绝申请失败，请稍后再试';
@@ -452,6 +468,20 @@ async function saveTokenAndReload() {
   }
 }
 
+function prevApplicationPage() {
+  if (applicationPage.value > 1) {
+    applicationPage.value--;
+    void reloadApplications();
+  }
+}
+
+function nextApplicationPage() {
+  if (applicationPage.value * 20 < applicationTotal.value) {
+    applicationPage.value++;
+    void reloadApplications();
+  }
+}
+
 function switchTab(tab: TabKey) {
   activeTab.value = tab;
   editor.value = null;
@@ -464,6 +494,11 @@ function switchTab(tab: TabKey) {
     void loadAnalytics();
   }
 }
+
+watch(activeTab, (tab) => {
+  if (tab === 'analytics') void loadAnalytics();
+  if (tab === 'applications') void reloadApplications();
+});
 
 function openCreate(resource: TabKey) {
   editor.value = { resource };
@@ -1009,7 +1044,7 @@ onMounted(() => {
         </form>
 
         <div v-if="activeTab === 'analytics'" class="analytics-wrap">
-          <view class="analytics-toolbar">
+          <div class="analytics-toolbar">
             <span class="analytics-toolbar-label">时间窗口</span>
             <button
               v-for="range in [7, 14, 30, 60]"
@@ -1022,7 +1057,7 @@ onMounted(() => {
               近 {{ range }} 天
             </button>
             <span v-if="analyticsLoading" class="analytics-loading">加载中...</span>
-          </view>
+          </div>
 
           <div v-if="analyticsOverview" class="analytics-grid">
             <article class="analytics-card analytics-card--span2">
@@ -1201,6 +1236,11 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+          <div class="pagination" v-if="applicationTotal > 0">
+            <button type="button" class="ghost-action" :disabled="applicationPage <= 1" @click="prevApplicationPage">上一页</button>
+            <span class="pagination-info">第 {{ applicationPage }} 页 / 共 {{ Math.ceil(applicationTotal / 20) }} 页 (总 {{ applicationTotal }} 条)</span>
+            <button type="button" class="ghost-action" :disabled="applicationPage * 20 >= applicationTotal" @click="nextApplicationPage">下一页</button>
+          </div>
         </div>
 
         <div v-if="activeTab === 'matches'" class="table-search">
@@ -1672,6 +1712,7 @@ h1 {
 .panel-toolbar,
 .tabs,
 .actions,
+.pagination,
 .editor-card header {
   display: flex;
   gap: 10px;
@@ -1688,6 +1729,15 @@ h1 {
   border-radius: 16px;
   padding: 12px 14px;
   background: #fffdf7;
+}
+
+.pagination {
+  padding: 20px;
+  justify-content: flex-end;
+}
+.pagination-info {
+  font-size: 13px;
+  color: #657168;
 }
 
 .token-row button,

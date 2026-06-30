@@ -811,14 +811,6 @@ export class AdminService {
       throw new ConflictException(`application ${applicationId} is already ${application.status}`);
     }
 
-    if (application.match.startTime.getTime() <= Date.now()) {
-      throw new ConflictException(`match ${application.matchId} has already started`);
-    }
-
-    if (application.match.openSlots <= 0) {
-      throw new ConflictException(`match ${application.matchId} has no open slots`);
-    }
-
     await this.prisma.$transaction(async (tx) => {
       await tx.matchApplication.update({
         where: { id: applicationId },
