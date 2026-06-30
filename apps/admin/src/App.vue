@@ -28,6 +28,8 @@ type EditorState = {
 type CourtEditorState = { venueId: string; id?: string };
 type SlotEditorState = { venueId: string; id?: string };
 
+const username = ref("");
+const password = ref("");
 const token = ref(getStoredAdminToken() || DEFAULT_ADMIN_TOKEN);
 const activeTab = ref<TabKey>('applications');
 const loading = ref(true);
@@ -794,14 +796,19 @@ onMounted(() => {
       </div>
 
       <form class="token-card" @submit.prevent="saveTokenAndReload">
-        <label for="admin-token">后台访问令牌</label>
+        <div style="margin-bottom: 12px;">
+          <label for="admin-username">账号</label>
+          <input id="admin-username" v-model="username" type="text" autocomplete="off" class="auth-input" />
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label for="admin-password">密码</label>
+          <input id="admin-password" v-model="password" type="password" autocomplete="off" class="auth-input" />
+        </div>
         <div class="token-row">
-          <input id="admin-token" v-model="token" type="password" autocomplete="off" />
-          <button type="submit" :disabled="savingToken">
-            {{ savingToken ? '保存中' : '保存并刷新' }}
+          <button type="submit" :disabled="savingToken" style="width: 100%;">
+            {{ savingToken ? '登录中' : '登录' }}
           </button>
         </div>
-        <p>本地开发默认令牌为 dev-admin-token，生产环境请配置 ADMIN_TOKEN。</p>
       </form>
     </section>
 
@@ -2210,3 +2217,12 @@ td small {
   color: #183b2a;
 }
 </style>
+
+.auth-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(29, 52, 39, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  margin-top: 4px;
+}

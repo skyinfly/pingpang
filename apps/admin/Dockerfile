@@ -40,7 +40,7 @@ RUN pnpm --filter @pingpang/admin build
 # ----- Runtime stage: nginx serving the built bundle -----
 FROM nginx:1.27-alpine AS runtime
 
-COPY --from=builder /workspace/apps/admin/dist /usr/share/nginx/html
+COPY --from=builder /workspace/apps/admin/dist /usr/share/nginx/html/admin
 COPY apps/admin/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

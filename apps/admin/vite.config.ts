@@ -13,4 +13,7 @@ export default defineConfig({
     globals: true,
     include: ['src/__tests__/**/*.spec.ts'],
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+  },
 });

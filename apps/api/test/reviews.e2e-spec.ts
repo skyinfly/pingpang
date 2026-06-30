@@ -15,6 +15,14 @@ describe('Reviews and credit', () => {
       .send({ phone, code: '123456' })
       .expect(201);
 
+    if (response.body.requiresRegistration) {
+      const regRes = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ phone, code: '123456', nickname: `User${phone}` })
+        .expect(201);
+      return regRes.body.token as string;
+    }
+
     return response.body.token as string;
   }
 

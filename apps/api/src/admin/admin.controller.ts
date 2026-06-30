@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, SetMetadata, UnauthorizedException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminTokenGuard } from './admin-token.guard';
+import { getAppConfig } from '../common/env/app-config';
 
 @Controller('admin')
 @UseGuards(AdminTokenGuard)
@@ -10,6 +11,16 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly analyticsService: AdminAnalyticsService,
   ) {}
+
+  @Post('login')
+  @SetMetadata('isPublic', true)
+  login(@Body() body: Record<string, string>) {
+    const config = getAppConfig();
+    if (body.username === config.adminUsername && body.password === config.adminPassword) {
+      return { token: config.adminToken };
+    }
+    throw new UnauthorizedException('Invalid credentials');
+  }
 
   @Get('summary')
   getSummary() {

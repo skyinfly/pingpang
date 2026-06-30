@@ -294,7 +294,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "E:\\CODE\\pingpang\\apps\\api\\src\\generated\\prisma",
+      "value": "D:\\CODE\\pingpang\\apps\\api\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -308,11 +308,12 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "E:\\CODE\\pingpang\\apps\\api\\prisma\\schema.prisma",
+    "sourceFilePath": "D:\\CODE\\pingpang\\apps\\api\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null
+    "rootEnvPath": null,
+    "schemaEnvPath": "../../../../../.env"
   },
   "relativePath": "../../../prisma",
   "clientVersion": "6.19.3",
@@ -321,7 +322,6 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {

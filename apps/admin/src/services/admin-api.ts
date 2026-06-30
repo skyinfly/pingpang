@@ -268,6 +268,7 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
   }
 
   return {
+    login: (payload: Record<string, string>) => send<{ token: string }>('POST', '/admin/login', payload),
     getSummary: () => get<AdminSummary>('/admin/summary'),
     listMatches: (search = '') =>
       get<{ items: AdminMatchRow[]; total: number; page: number; pageSize: number }>(

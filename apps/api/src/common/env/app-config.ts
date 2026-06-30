@@ -6,6 +6,8 @@ export type AppConfig = {
   authTokenSecret: string;
   authTokenTtlSeconds: number;
   adminToken: string;
+  adminUsername: string;
+  adminPassword: string;
 };
 
 function readBoolean(value: string | undefined, fallback: boolean) {
@@ -29,6 +31,8 @@ export function getAppConfig(): AppConfig {
   const authTokenSecret =
     process.env.AUTH_TOKEN_SECRET || (nodeEnv === 'production' ? '' : 'pingpang-dev-session-secret');
   const adminToken = process.env.ADMIN_TOKEN || (nodeEnv === 'production' ? '' : 'dev-admin-token');
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
 
   if (nodeEnv === 'production' && allowDevLogin) {
     throw new Error('ALLOW_DEV_LOGIN must be false in production');
@@ -48,5 +52,7 @@ export function getAppConfig(): AppConfig {
     authTokenSecret,
     authTokenTtlSeconds: readNumber(process.env.AUTH_TOKEN_TTL_SECONDS, 60 * 60 * 24 * 7),
     adminToken,
+    adminUsername,
+    adminPassword,
   };
 }

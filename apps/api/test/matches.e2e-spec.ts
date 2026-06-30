@@ -1,4 +1,4 @@
-﻿import { Test } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -259,7 +259,7 @@ describe('Matches listing', () => {
       title: '龙华晚间补位局',
       courtId: 'venue-court-3',
       slotId: 'venue-slot-4',
-      venueName: '静安寺白领馆 2号台',
+      venueName: '静安寺白领馆 · 2号台',
       city: '上海',
       level: 'intermediate',
       maxPlayers: 4,
@@ -272,7 +272,7 @@ describe('Matches listing', () => {
     expect(storedMatch?.venueId).toBe('venue-seed-2');
     expect((storedMatch as typeof storedMatch & { courtId?: string | null })?.courtId).toBe('venue-court-3');
     expect(storedMatch?.slotId).toBe('venue-slot-4');
-    expect(storedMatch?.venueName).toBe('静安寺白领馆 2号台');
+    expect(storedMatch?.venueName).toBe('静安寺白领馆 · 2号台');
     expect(storedMatch?.hostCreditScore).toBe(100);
     expect(storedMatch?.distanceKm).toBe(3.2);
     expect(storedMatch?.matchRate).toBe(89);
@@ -350,7 +350,7 @@ describe('Matches listing', () => {
       expect.arrayContaining([
         expect.objectContaining({
           title: '我发起的徐汇晚场',
-          venueName: '徐家汇活力馆 5号台',
+          venueName: '徐家汇活力馆 · 5号台',
           openSlots: 3,
         }),
       ]),
