@@ -42,13 +42,17 @@ FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 
-# node:bookworm-slim already has openssl + ca-certificates; we only need a
-# tiny init wrapper to forward signals. We ship the static binary in the
-# repo (apps/api/vendor/dumb-init) instead of `ADD`-ing from GitHub at
-# build time — connections to github.com from mainland China time out
-# unpredictably and break otherwise-clean rebuilds.
-COPY apps/api/vendor/dumb-init /usr/local/bin/dumb-init
-RUN chmod +x /usr/local/bin/dumb-init
+# node:bookworm-slim already has openssl + ca-certificates. dumb-init comes
+# from the Debian apt repo (architecture-agnostic — the previously vendored
+# x86-64 binary broke on arm64 with "exec format error").
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends dumb-init \
+    && rm -rf /var/lib/apt/lists/*
+
+# `pnpm deploy --prod --legacy` strips devDependencies, so the `prisma` CLI
+# (a devDependency) never lands in the runtime node_modules. Install it
+# globally so the boot-time `prisma migrate deploy` below can run.
+RUN npm install -g prisma@6.19.3
 
 WORKDIR /app
 
@@ -71,4 +75,4 @@ USER node
 # job (SKIP_MIGRATIONS=1). Nest compiles to dist/src/main.js, not
 # dist/main.js — keep the path in sync with the source layout.
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "if [ \"$SKIP_MIGRATIONS\" != \"1\" ]; then ./node_modules/.bin/prisma migrate deploy; fi && node dist/src/main.js"]
+CMD ["sh", "-c", "if [ \"$SKIP_MIGRATIONS\" != \"1\" ]; then prisma migrate deploy --schema prisma/schema.prisma; fi && node dist/src/main.js"]

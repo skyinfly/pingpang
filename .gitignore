@@ -3,6 +3,7 @@ dist
 coverage
 .DS_Store
 .env
+docker-compose.override.yml
 .pnpm-store
 *.log
 .local
