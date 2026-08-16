@@ -11,6 +11,24 @@ export class UsersService {
     private readonly sessionRevocation: SessionRevocationService,
   ) {}
 
+  /**
+   * Shared select shape for any user row returned to the client. Never
+   * include passwordHash (or any future sensitive column) here — the
+   * AuthService reads the hash via findEmailUserForAuth separately.
+   */
+  private readonly publicProfileSelect = {
+    id: true,
+    email: true,
+    phone: true,
+    wechatOpenId: true,
+    wechatUnionId: true,
+    nickname: true,
+    city: true,
+    level: true,
+    avatarUrl: true,
+    creditScore: true,
+  } as const;
+
   async upsertDevUser(phone: string): Promise<SessionUser> {
     return this.prisma.user.upsert({
       where: { phone },
@@ -54,7 +72,7 @@ export class UsersService {
         passwordHash: payload.passwordHash,
         phone: null,
         nickname: payload.nickname.trim(),
-        city: (payload.city ?? '上海').trim(),
+        city: (payload.city ?? '').trim(),
         level: payload.level ?? 'intermediate',
         creditScore: 100,
       },
@@ -119,7 +137,7 @@ export class UsersService {
       data: {
         phone: payload.phone,
         nickname: payload.nickname.trim(),
-        city: (payload.city ?? '上海').trim(),
+        city: (payload.city ?? '').trim(),
         level: payload.level ?? 'intermediate',
         creditScore: 100,
       },
@@ -162,7 +180,7 @@ export class UsersService {
         wechatUnionId: payload.unionId ?? null,
         phone: null,
         nickname: `球友${placeholder}`,
-        city: '上海',
+        city: '',
         level: 'intermediate',
         creditScore: 100,
       },
@@ -224,10 +242,17 @@ export class UsersService {
     }
 
     if (Object.keys(data).length === 0) {
-      return this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+      return this.prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: this.publicProfileSelect,
+      });
     }
 
-    return this.prisma.user.update({ where: { id: userId }, data });
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: this.publicProfileSelect,
+    });
   }
 
   async getProfileByToken(token: string): Promise<SessionUser> {
@@ -237,7 +262,13 @@ export class UsersService {
       throw new UnauthorizedException('session has been revoked');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: session.sub } });
+    // Explicit select keeps passwordHash (and any future sensitive column)
+    // off the response. Previously the raw row was returned here and leaked
+    // the bcrypt hash through GET/PATCH /users/me.
+    const user = await this.prisma.user.findUnique({
+      where: { id: session.sub },
+      select: this.publicProfileSelect,
+    });
 
     if (!user) {
       throw new NotFoundException(`User ${session.sub} not found`);

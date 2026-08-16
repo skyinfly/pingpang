@@ -370,6 +370,15 @@ export class MatchesService {
   }
 
   async create(payload: CreateMatchDto, hostUserId: string) {
+    // Captured outside the transaction so the geo can hydrate the returned
+    // card after commit (venue is scoped inside the tx callback). The value
+    // is always assigned inside the callback before any use, but TS can't
+    // see that through the closure, so we type it explicitly.
+    let venueGeo: { latitude: number | null; longitude: number | null; address: string | null } = {
+      latitude: null,
+      longitude: null,
+      address: null,
+    };
     const createdMatch = await this.prisma.$transaction(async (tx) => {
       const venue = await tx.venue.findFirst({
         where: {
@@ -381,12 +390,21 @@ export class MatchesService {
           name: true,
           city: true,
           distanceKm: true,
+          latitude: true,
+          longitude: true,
+          address: true,
         },
       });
 
       if (!venue) {
         throw new NotFoundException(`Active venue ${payload.venueId} not found`);
       }
+
+      venueGeo = {
+        latitude: venue.latitude ?? null,
+        longitude: venue.longitude ?? null,
+        address: venue.address ?? null,
+      };
 
       // Court is now optional at create time — host fills it in via
       // PATCH /matches/:id later when players actually arrive. If a
@@ -521,7 +539,16 @@ export class MatchesService {
       return match;
     });
 
-    return this.mapMatch(createdMatch);
+    // Hydrate venue geo on the freshly created card so the client doesn't
+    // need a follow-up GET to render the map/distance. venue was already
+    // fetched above, so this is free.
+    const card = this.mapMatch(createdMatch);
+    return {
+      ...card,
+      venueLatitude: venueGeo.latitude,
+      venueLongitude: venueGeo.longitude,
+      venueAddress: venueGeo.address,
+    };
   }
 
   async apply(id: string, userId: string) {

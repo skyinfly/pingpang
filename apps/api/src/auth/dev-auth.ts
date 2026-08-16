@@ -24,7 +24,7 @@ export function buildDevUserData(phone: string) {
   return {
     phone,
     nickname: `球友${phone.slice(0, 7)}`,
-    city: '上海',
+    city: '',
     level: 'intermediate',
     creditScore: 100,
   };

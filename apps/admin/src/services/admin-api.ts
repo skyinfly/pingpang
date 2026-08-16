@@ -61,6 +61,10 @@ export type AdminVenueRow = {
   city: string;
   district: string | null;
   distanceKm: number;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+  amapPoiId: string | null;
   isActive: boolean;
   courtCount: number;
   slotCount: number;
@@ -74,6 +78,10 @@ export type AdminVenuePayload = {
   city: string;
   district?: string;
   distanceKm: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
+  amapPoiId?: string | null;
   isActive: boolean;
 };
 

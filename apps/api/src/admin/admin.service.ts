@@ -70,6 +70,30 @@ function optionalPositiveNumber(value: unknown) {
   return parsed;
 }
 
+/**
+ * Optional float coordinate (latitude/longitude). Unlike
+ * optionalPositiveNumber it allows null so clients can clear a previously
+ * set coordinate, and accepts negatives so longitude (which ranges from
+ * -180..180) validates correctly.
+ */
+function optionalNumber(value: unknown) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    throw new BadRequestException('Expected a number');
+  }
+
+  return parsed;
+}
+
 function optionalInteger(value: unknown) {
   if (value === undefined) {
     return undefined;
@@ -443,6 +467,10 @@ export class AdminService {
         city: requiredString(body, 'city'),
         district: optionalString(body.district) ?? null,
         distanceKm: optionalPositiveNumber(body.distanceKm) ?? 0,
+        latitude: optionalNumber(body.latitude) ?? null,
+        longitude: optionalNumber(body.longitude) ?? null,
+        address: optionalString(body.address) ?? null,
+        amapPoiId: optionalString(body.amapPoiId) ?? null,
         isActive: optionalBoolean(body.isActive) ?? true,
       },
       include: this.venueDetailInclude(),
@@ -461,6 +489,10 @@ export class AdminService {
         city: optionalString(body.city),
         district: body.district === null ? null : optionalString(body.district),
         distanceKm: optionalPositiveNumber(body.distanceKm),
+        latitude: body.latitude === null ? null : optionalNumber(body.latitude),
+        longitude: body.longitude === null ? null : optionalNumber(body.longitude),
+        address: body.address === null ? null : optionalString(body.address),
+        amapPoiId: body.amapPoiId === null ? null : optionalString(body.amapPoiId),
         isActive: optionalBoolean(body.isActive),
       },
       include: this.venueDetailInclude(),
@@ -880,8 +912,11 @@ export class AdminService {
     }
 
     const body = payload === undefined || payload === null ? {} : asRecord(payload);
+    // Accept both `reason` and the admin SPA's `decisionReason` field name.
+    // The web client historically sent `decisionReason`; keep both working
+    // so a stored reason is never silently dropped to the default copy.
     const decisionReason =
-      optionalString(body.reason) || '这场球局当前席位更适合其他安排，你可以换个时间段继续约。';
+      optionalString(body.reason ?? body.decisionReason) || '这场球局当前席位更适合其他安排，你可以换个时间段继续约。';
 
     await this.prisma.$transaction(async (tx) => {
       await tx.matchApplication.update({
@@ -1178,6 +1213,10 @@ export class AdminService {
     city: string;
     district: string | null;
     distanceKm: number;
+    latitude: number | null;
+    longitude: number | null;
+    address: string | null;
+    amapPoiId: string | null;
     isActive: boolean;
     courts: Array<{ id: string; name: string; sortOrder: number; isActive: boolean }>;
     availabilitySlots: Array<{
@@ -1198,6 +1237,10 @@ export class AdminService {
       city: venue.city,
       district: venue.district,
       distanceKm: venue.distanceKm,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+      address: venue.address,
+      amapPoiId: venue.amapPoiId,
       isActive: venue.isActive,
       courtCount: venue.courts.length,
       slotCount: venue.availabilitySlots.length,

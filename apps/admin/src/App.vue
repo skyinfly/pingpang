@@ -546,7 +546,7 @@ function openCreate(resource: TabKey) {
   editor.value = { resource };
 
   if (resource === 'venues') {
-    form.value = { name: '', city: '上海', district: '', distanceKm: 0, isActive: true };
+    form.value = { name: '', city: '', district: '', distanceKm: 0, address: '', latitude: '', longitude: '', amapPoiId: '', isActive: true };
     return;
   }
 
@@ -580,6 +580,10 @@ function openEdit(resource: TabKey, row: AdminMatchRow | AdminUserRow | AdminVen
       city: venue.city,
       district: venue.district ?? '',
       distanceKm: venue.distanceKm,
+      address: venue.address ?? '',
+      latitude: venue.latitude ?? '',
+      longitude: venue.longitude ?? '',
+      amapPoiId: venue.amapPoiId ?? '',
       isActive: venue.isActive,
     };
     return;
@@ -644,6 +648,10 @@ async function saveEditor() {
         city: stringField('city'),
         district: stringField('district'),
         distanceKm: numberField('distanceKm'),
+        address: stringField('address') || null,
+        latitude: form.value.latitude === '' || form.value.latitude == null ? null : Number(form.value.latitude),
+        longitude: form.value.longitude === '' || form.value.longitude == null ? null : Number(form.value.longitude),
+        amapPoiId: stringField('amapPoiId') || null,
         isActive: Boolean(form.value.isActive),
       };
       const saved = editor.value.id
@@ -667,12 +675,30 @@ async function saveEditor() {
     }
 
     if (editor.value.resource === 'matches') {
+      const hostUserId = stringField('hostUserId');
+      const venueId = stringField('venueId');
+      const slotId = stringField('slotId');
+
+      // Friendly guard for the cold-start case: the admin can't create a
+      // match without at least one user (host) and one venue.
+      if (!hostUserId) {
+        errorMessage.value = '请先在「用户」页签创建一个主理人，再创建球局';
+        savingEditor.value = false;
+        return;
+      }
+
+      if (!venueId) {
+        errorMessage.value = '请先在「球馆」页签创建一个球馆，再创建球局';
+        savingEditor.value = false;
+        return;
+      }
+
       const payload = {
         title: stringField('title'),
-        hostUserId: stringField('hostUserId'),
-        venueId: stringField('venueId'),
+        hostUserId,
+        venueId,
         courtId: stringField('courtId'),
-        slotId: stringField('slotId'),
+        slotId,
         level: stringField('level'),
         maxPlayers: numberField('maxPlayers'),
       };
@@ -1017,6 +1043,10 @@ onMounted(() => {
             <label>城市<input data-testid="venue-city" v-model="form.city" required /></label>
             <label>区域<input data-testid="venue-district" v-model="form.district" /></label>
             <label>距离<input data-testid="venue-distance" v-model.number="form.distanceKm" type="number" min="0" step="0.1" /></label>
+            <label>地址<input data-testid="venue-address" v-model="form.address" placeholder="如：浦东新区张江路 100 号" /></label>
+            <label>纬度<input data-testid="venue-latitude" v-model.number="form.latitude" type="number" step="any" placeholder="GCJ-02 纬度" /></label>
+            <label>经度<input data-testid="venue-longitude" v-model.number="form.longitude" type="number" step="any" placeholder="GCJ-02 经度" /></label>
+            <label>高德 POI ID<input data-testid="venue-amap-poi" v-model="form.amapPoiId" /></label>
             <label class="checkbox"><input v-model="form.isActive" type="checkbox" /> 启用球馆</label>
           </div>
 
