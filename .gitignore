@@ -7,4 +7,9 @@ docker-compose.override.yml
 .pnpm-store
 *.log
 .local
-apps/api/src/generated/prisma/query_engine-windows.dll.node.tmp*
+backups/
+logs/
+# Prisma client output is regenerated at build time (Dockerfile + CI both run
+# `prisma generate`), and the generated engine binaries are platform-specific
+# (windows .dll / linux .so), so the whole generated tree stays out of git.
+apps/api/src/generated/

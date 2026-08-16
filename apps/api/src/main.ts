@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { getAppConfig } from './common/env/app-config';
 import { initSentry, captureBootstrapError } from './common/observability/sentry';
@@ -19,6 +20,14 @@ async function bootstrap() {
     origin: allowed.length > 0 ? allowed : true,
     credentials: true,
   });
+
+  // Standard security headers via helmet (X-Content-Type-Options, X-Frame-
+  // Options, Referrer-Policy, HSTS, a conservative default CSP, etc.). The
+  // API serves JSON only, so the default `default-src 'self'` CSP is a safe
+  // no-op for API consumers while still signalling a locked-down policy.
+  // The static SPA bundles (admin / H5) are served by nginx and carry their
+  // own headers there.
+  app.use(helmet());
 
   // Serve local-disk uploads when running with the default storage adapter.
   // When STORAGE_PROVIDER=oss is wired this becomes a no-op and the OSS
