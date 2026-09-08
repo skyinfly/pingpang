@@ -91,12 +91,18 @@ function openMatchDetail(id: string) {
           @click="openMatchDetail(item.id)"
         >
           <image v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" mode="aspectFill" />
-          <text class="card-title">{{ item.title }}</text>
+          <view class="card-header-row">
+            <text class="card-title">{{ item.title }}</text>
+            <view class="card-badge" :class="{ 'card-badge--hot': item.openSlots <= 2 }">
+              <text class="card-badge-dot">●</text>
+              <text class="card-badge-text">剩 {{ item.openSlots }} 席</text>
+            </view>
+          </view>
           <text class="card-meta">
-            {{ item.distanceKm }}km · 还差 {{ item.openSlots }} 人 · 匹配度 {{ item.matchRate }}%
+            {{ item.distanceKm }}km · 匹配度 {{ item.matchRate }}%
           </text>
           <text class="card-caption">
-            {{ item.venueName }} · {{ formatMatchTime(item.startTime) }} · 主理人信用 {{ item.hostCreditScore }}
+            {{ item.venueName }} · {{ formatMatchTime(item.startTime) }} · 🛡️ 信用 {{ item.hostCreditScore }}
           </text>
         </view>
       </template>
@@ -203,7 +209,44 @@ function openMatchDetail(id: string) {
   border-radius: $radius-card;
   overflow: hidden;
   background: $color-surface;
-  box-shadow: $shadow-card;
+  box-shadow: 0 10rpx 30rpx rgba(15, 28, 46, 0.05);
+  border: 1px solid rgba(15, 28, 46, 0.05);
+  margin-bottom: 24rpx;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:active {
+    transform: scale(0.985);
+  }
+}
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 28rpx 0;
+  gap: 16rpx;
+}
+
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(47, 191, 113, 0.12);
+  color: #1f9d55;
+  font-size: 20rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+
+  &--hot {
+    background: rgba(255, 106, 61, 0.12);
+    color: #e04f26;
+  }
+}
+
+.card-badge-dot {
+  font-size: 14rpx;
 }
 
 .card-cover {
@@ -213,11 +256,12 @@ function openMatchDetail(id: string) {
 }
 
 .card-title {
-  padding: 28rpx 28rpx 0;
+  padding: 0 !important;
   display: block;
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: 32rpx;
+  font-weight: 800;
   color: $color-ink;
+  flex: 1;
 }
 
 .card-meta {

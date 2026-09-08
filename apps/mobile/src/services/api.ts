@@ -75,6 +75,13 @@ export function registerUser(payload: RegisterPayload) {
 
 // ---- Email + password auth (H5) ----
 
+export function requestEmailCode(email: string) {
+  return http<{ ok: boolean; message?: string }>('/auth/email/request-code', {
+    method: 'POST',
+    data: { email },
+  });
+}
+
 export function registerEmailUser(payload: RegisterEmailPayload) {
   return http<SessionPayload>('/auth/email/register', {
     method: 'POST',

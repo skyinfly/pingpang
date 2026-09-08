@@ -30,7 +30,12 @@
     return 'http://127.0.0.1:3000';
   }
 
-  return 'http://localhost:3000';
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const proto = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    return `${proto}//${window.location.hostname}:3001`;
+  }
+
+  return 'http://localhost:3001';
 }
 
 const BASE_URL = resolveApiBaseUrl();

@@ -24,7 +24,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 // caches without these fields are still valid but the header would
 // re-paint with the new street-level info on next refresh; bumping the
 // key just forces a clean rebuild on first load after the upgrade.
-const STORAGE_KEY = 'pingpang.location.cache.v3';
+const STORAGE_KEY = 'pingpang.location.cache.v4';
 
 export type LocationStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'unavailable';
 export type LocationSource = 'wechat' | 'browser' | 'ip';
@@ -52,6 +52,8 @@ function readCachedLocation(): StoredCache | null {
     const parsed = JSON.parse(raw) as StoredCache;
     if (!parsed || typeof parsed.lat !== 'number') return null;
     if (Date.now() - parsed.updatedAt > CACHE_TTL_MS) return null;
+    const isInsideChina = (lat: number, lng: number) => lat >= 18 && lat <= 54 && lng >= 73 && lng <= 135;
+    if (!isInsideChina(parsed.lat, parsed.lng)) return null;
     return parsed;
   } catch {
     return null;
@@ -188,6 +190,15 @@ export const useLocationStore = defineStore('location', {
       }
 
       if (coords && source) {
+        // If coordinates land outside Mainland China (e.g. testing from overseas VPS / VPN exit),
+        // AMap POI lookup will return 0 items. Fallback to Shanghai center.
+        const isInsideChina = (lat: number, lng: number) => lat >= 18 && lat <= 54 && lng >= 73 && lng <= 135;
+        if (!isInsideChina(coords.lat, coords.lng)) {
+          coords = { lat: 31.2304, lng: 121.4737 };
+          city = '上海';
+          district = '黄浦区';
+        }
+
         this.lat = coords.lat;
         this.lng = coords.lng;
         this.source = source;

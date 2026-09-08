@@ -67,6 +67,7 @@ export type RegisterEmailPayload = {
   nickname: string;
   city?: string;
   level?: 'beginner' | 'intermediate' | 'advanced';
+  code: string;
 };
 
 export type MatchLifecycle = 'upcoming' | 'live' | 'completed' | 'cancelled';

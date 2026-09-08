@@ -99,6 +99,7 @@ function dayLabel(offset: number) {
 // the "更多日期" picker so the row doesn't horizontally scroll.
 const dateOptions = Array.from({ length: 14 }, (_, index) => dayLabel(index));
 const quickDateOptions = dateOptions.slice(0, 3);
+const isQuickDateSelected = computed(() => quickDateOptions.some((option) => option.value === selectedDate.value));
 // Default both date and time from the same "now + 30min" computation
 // so they roll over together. If the rounded-up time crosses midnight
 // we bump the date to tomorrow — otherwise the form would submit a
@@ -227,30 +228,25 @@ async function loadOptions() {
 }
 
 async function runPoiSearch() {
-  const coords = locationStore.coords;
-  if (!coords) {
-    poiHint.value = '需要先获取你的位置，或手动输入关键字';
-    if (!poiKeyword.value.trim()) {
-      toast('需要先获取定位再搜索', 'error');
-      return;
-    }
-  }
   if (poiSearching.value) return;
   poiSearching.value = true;
   poiHint.value = '';
   try {
+    const coords = locationStore.coords;
     const response = await searchVenuePois({
       lat: coords?.lat ?? 31.2304,
       lng: coords?.lng ?? 121.4737,
       keyword: poiKeyword.value.trim() || undefined,
-      radiusMeters: 8000,
+      radiusMeters: 10000,
     });
     poiResults.value = response.items;
     if (response.items.length === 0) {
-      poiHint.value = '附近没找到球馆，试试别的关键字';
+      poiHint.value = poiKeyword.value.trim()
+        ? `未找到与 “${poiKeyword.value.trim()}” 相关的球馆，试试输入其他关键字`
+        : '周边暂无推荐球馆，可以在上方搜索球馆名称';
     }
   } catch {
-    poiHint.value = '搜索失败，请稍后再试';
+    poiHint.value = '球馆检索暂时不可用，请稍后再试';
   } finally {
     poiSearching.value = false;
   }
@@ -371,19 +367,17 @@ async function handlePublish() {
 
 onMounted(() => {
   void loadOptions();
+  void runPoiSearch();
 });
 
-// As soon as the location store resolves coords, fire the default POI
-// search. This is what makes the "附近球馆" list show up on entry without
-// the user having to tap a button.
+// When location store gets coords, refresh POI search if user has not typed custom keyword
 watch(
   () => locationStore.coords,
   (coords) => {
-    if (coords && poiResults.value.length === 0 && !poiSearching.value) {
+    if (coords && !poiKeyword.value.trim() && !poiSearching.value) {
       void runPoiSearch();
     }
   },
-  { immediate: true },
 );
 </script>
 
@@ -457,9 +451,17 @@ watch(
               {{ poiSearching ? '搜索中…' : '搜索' }}
             </button>
           </view>
-          <text v-if="poiHint" class="poi-hint">{{ poiHint }}</text>
-
-          <view v-if="poiSearching && poiResults.length === 0" class="poi-hint">正在查找你附近的球馆…</view>
+          <view v-if="poiSearching && poiResults.length === 0" class="poi-skeleton">
+            <view class="poi-skeleton-card">
+              <view class="poi-skeleton-line title"></view>
+              <view class="poi-skeleton-line desc"></view>
+            </view>
+            <view class="poi-skeleton-card">
+              <view class="poi-skeleton-line title"></view>
+              <view class="poi-skeleton-line desc"></view>
+            </view>
+          </view>
+          <text v-else-if="poiHint" class="poi-hint">{{ poiHint }}</text>
 
           <view v-if="previewPoiResults.length > 0" class="poi-list">
             <view
@@ -511,7 +513,7 @@ watch(
             />
           </label>
         </view>
-        <view class="date-display">
+        <view v-if="!isQuickDateSelected" class="date-display">
           <text class="date-value">{{ selectedDateDisplay }}</text>
         </view>
         <view class="option-row">
@@ -621,7 +623,7 @@ watch(
 .page {
   min-height: 100vh;
   padding: 32rpx;
-  padding-bottom: calc(280rpx + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(340rpx + env(safe-area-inset-bottom, 24px));
   background:
     radial-gradient(circle at top right, rgba(255, 106, 61, 0.16), transparent 38%),
     linear-gradient(180deg, #fff4e8 0%, $color-bg 50%, #fffdf8 100%);
@@ -659,7 +661,15 @@ watch(
   line-height: 1.6;
 }
 
-.panel,
+.panel {
+  margin-top: 28rpx;
+  padding: 28rpx;
+  padding-bottom: 220rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow: $shadow-card;
+}
+
 .state-card {
   margin-top: 28rpx;
   padding: 28rpx;
@@ -859,6 +869,33 @@ watch(
   margin-top: 12rpx;
   font-size: 22rpx;
   color: $color-muted;
+}
+.poi-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+.poi-skeleton-card {
+  padding: 20rpx;
+  border-radius: 14rpx;
+  background: #ffffff;
+  border: 1px solid rgba(15, 28, 46, 0.05);
+}
+.poi-skeleton-line {
+  height: 24rpx;
+  border-radius: 6rpx;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+
+  &.title { width: 60%; margin-bottom: 12rpx; }
+  &.desc { width: 90%; height: 18rpx; }
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 .poi-list {
   display: flex;
@@ -1073,8 +1110,10 @@ watch(
   z-index: 20;
   padding: 24rpx;
   border-radius: 28rpx;
-  background: rgba(255, 252, 248, 0.98);
-  border: 1px solid rgba(255, 106, 61, 0.12);
+  background: rgba(255, 252, 248, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 106, 61, 0.16);
   box-shadow: 0 18rpx 48rpx rgba(24, 39, 75, 0.14);
 }
 

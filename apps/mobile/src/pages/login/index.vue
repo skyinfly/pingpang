@@ -14,8 +14,8 @@
  *  - Phone-OTP and WeChat one-tap stay accessible from a small footer
  *    link for users who explicitly want them.
  */
-import { computed, ref } from 'vue';
-import { loginEmailUser, loginWithWechat, registerEmailUser } from '../../services/api';
+import { computed, ref, onUnmounted } from 'vue';
+import { loginEmailUser, loginWithWechat, registerEmailUser, requestEmailCode } from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import { useLocationStore } from '../../stores/location';
 import { nearestCity } from '../../utils/geo';
@@ -37,6 +37,7 @@ const locationStore = useLocationStore();
 
 const mode = ref<Mode>('login');
 const email = ref('');
+const emailCode = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const nickname = ref('');
@@ -44,6 +45,14 @@ const showPassword = ref(false);
 const agreedToTerms = ref(false);
 
 const submitting = ref(false);
+const codeLoading = ref(false);
+const codeCountdown = ref(0);
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+onUnmounted(() => {
+  if (countdownTimer) clearInterval(countdownTimer);
+});
+
 const wechatLoading = ref(false);
 const hint = ref('');
 const hintTone = ref<'info' | 'error' | 'success'>('info');
@@ -85,6 +94,46 @@ const nicknameValid = computed(() => {
   return n.length >= 2 && n.length <= 20;
 });
 const confirmValid = computed(() => password.value === confirmPassword.value);
+const codeValid = computed(() => /^\d{6}$/.test(emailCode.value.trim()));
+
+const canRequestCode = computed(() => emailValid.value && !codeLoading.value && codeCountdown.value === 0);
+
+const codeButtonText = computed(() => {
+  if (codeLoading.value) return '发送中…';
+  if (codeCountdown.value > 0) return `${codeCountdown.value}s后重发`;
+  return '获取验证码';
+});
+
+async function handleSendCode() {
+  if (!emailValid.value) {
+    setHint('请先输入有效的邮箱地址', 'error');
+    return;
+  }
+  if (!canRequestCode.value) return;
+
+  codeLoading.value = true;
+  setHint('');
+  try {
+    const res = await requestEmailCode(email.value.trim());
+    setHint(res.message || '验证码已发送至邮箱，请查收', 'success');
+    codeCountdown.value = 60;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      if (codeCountdown.value <= 1) {
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = null;
+        codeCountdown.value = 0;
+      } else {
+        codeCountdown.value -= 1;
+      }
+    }, 1000);
+  } catch (err: unknown) {
+    const resp = err as { statusCode?: number; data?: { message?: string } };
+    setHint(resp.data?.message || '验证码发送失败，请稍后重试', 'error');
+  } finally {
+    codeLoading.value = false;
+  }
+}
 
 /**
  * Per-field error strings. Only surface them once the user has typed
@@ -94,6 +143,10 @@ const confirmValid = computed(() => password.value === confirmPassword.value);
 const emailError = computed(() => {
   if (!email.value) return '';
   return emailValid.value ? '' : '邮箱格式不正确';
+});
+const codeError = computed(() => {
+  if (mode.value !== 'register' || !emailCode.value) return '';
+  return codeValid.value ? '' : '验证码须为 6 位数字';
 });
 const passwordError = computed(() => {
   if (!password.value) return '';
@@ -111,7 +164,7 @@ const nicknameError = computed(() => {
 const canSubmit = computed(() => {
   if (!agreedToTerms.value) return false;
   if (!emailValid.value || !passwordValid.value) return false;
-  if (mode.value === 'register' && (!nicknameValid.value || !confirmValid.value)) return false;
+  if (mode.value === 'register' && (!nicknameValid.value || !confirmValid.value || !codeValid.value)) return false;
   return !submitting.value;
 });
 
@@ -144,6 +197,7 @@ function switchMode(next: Mode) {
   // forms don't carry over stale state between tabs.
   password.value = '';
   confirmPassword.value = '';
+  emailCode.value = '';
   setHint('');
 }
 
@@ -186,6 +240,10 @@ async function handleSubmit() {
     return;
   }
   if (mode.value === 'register') {
+    if (!codeValid.value) {
+      setHint('请输入 6 位验证码', 'error');
+      return;
+    }
     if (!nicknameValid.value) {
       setHint('昵称需要 2–20 个字符', 'error');
       return;
@@ -212,6 +270,7 @@ async function handleSubmit() {
         email: email.value.trim(),
         password: password.value,
         nickname: nickname.value.trim(),
+        code: emailCode.value.trim(),
         // City auto-detected from geolocation; beginner is the v1 default.
         // Users can change both later from the profile page.
         city: resolvedRegisterCity(),
@@ -364,6 +423,35 @@ async function handleWechatLogin() {
         />
       </view>
       <text v-if="emailError" class="field-error">{{ emailError }}</text>
+
+      <template v-if="mode === 'register'">
+        <text class="field-label">邮箱验证码</text>
+        <view class="code-row">
+          <view class="input-shell code-input-shell" :class="{ 'input-shell--error': codeError }">
+            <text class="input-prefix">🔢</text>
+            <input
+              v-model="emailCode"
+              class="input"
+              type="text"
+              maxlength="6"
+              placeholder="6 位数字验证码"
+              autocomplete="one-time-code"
+              data-testid="register-code"
+            />
+          </view>
+          <button
+            class="code-button"
+            :class="{ 'code-button--disabled': !canRequestCode || codeCountdown > 0 }"
+            :disabled="!canRequestCode || codeCountdown > 0 || codeLoading"
+            type="button"
+            data-testid="send-code-btn"
+            @click="handleSendCode"
+          >
+            {{ codeButtonText }}
+          </button>
+        </view>
+        <text v-if="codeError" class="field-error">{{ codeError }}</text>
+      </template>
 
       <text class="field-label">密码</text>
       <view class="input-shell" :class="{ 'input-shell--error': passwordError }">
@@ -611,6 +699,44 @@ async function handleWechatLogin() {
 .input-shell--error {
   border-color: #ff8a5b;
   background: #fff4ec;
+}
+.code-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 12rpx;
+  margin-bottom: 20rpx;
+}
+.code-input-shell {
+  flex: 1;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.code-button {
+  flex-shrink: 0;
+  width: 200rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  padding: 0;
+  margin: 0;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #fff;
+  background: $color-primary;
+  border-radius: 24rpx;
+  text-align: center;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6rpx 14rpx rgba(255, 106, 61, 0.24);
+  transition: all 0.2s ease;
+
+  &--disabled, &:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.85;
+  }
 }
 .field-error {
   display: block;
