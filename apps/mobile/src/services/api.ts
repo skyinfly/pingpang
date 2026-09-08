@@ -75,10 +75,10 @@ export function registerUser(payload: RegisterPayload) {
 
 // ---- Email + password auth (H5) ----
 
-export function requestEmailCode(email: string) {
+export function requestEmailCode(email: string, intent: 'register' | 'login' | 'reset_password' = 'register') {
   return http<{ ok: boolean; message?: string }>('/auth/email/request-code', {
     method: 'POST',
-    data: { email },
+    data: { email, intent },
   });
 }
 
@@ -91,6 +91,20 @@ export function registerEmailUser(payload: RegisterEmailPayload) {
 
 export function loginEmailUser(payload: LoginEmailPayload) {
   return http<SessionPayload>('/auth/email/login', {
+    method: 'POST',
+    data: payload,
+  });
+}
+
+export function loginEmailWithCode(payload: { email: string; code: string }) {
+  return http<SessionPayload>('/auth/email/login-code', {
+    method: 'POST',
+    data: payload,
+  });
+}
+
+export function resetPasswordWithCode(payload: { email: string; code: string; newPassword: string }) {
+  return http<SessionPayload & { message?: string }>('/auth/email/reset-password', {
     method: 'POST',
     data: payload,
   });

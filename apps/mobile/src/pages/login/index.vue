@@ -15,7 +15,14 @@
  *    link for users who explicitly want them.
  */
 import { computed, ref, onUnmounted } from 'vue';
-import { loginEmailUser, loginWithWechat, registerEmailUser, requestEmailCode } from '../../services/api';
+import {
+  loginEmailUser,
+  loginEmailWithCode,
+  loginWithWechat,
+  registerEmailUser,
+  requestEmailCode,
+  resetPasswordWithCode,
+} from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import { useLocationStore } from '../../stores/location';
 import { nearestCity } from '../../utils/geo';
@@ -24,7 +31,8 @@ import AppToast from '../../components/AppToast.vue';
 import AppModal from '../../components/AppModal.vue';
 import type { LoginEmailPayload, RegisterEmailPayload, SessionPayload } from '../../services/types';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'forgot';
+type LoginType = 'password' | 'code';
 
 const authStore = useAuthStore();
 const locationStore = useLocationStore();
@@ -36,6 +44,7 @@ const locationStore = useLocationStore();
 // Beijing.
 
 const mode = ref<Mode>('login');
+const loginType = ref<LoginType>('password');
 const email = ref('');
 const emailCode = ref('');
 const password = ref('');
@@ -114,7 +123,12 @@ async function handleSendCode() {
   codeLoading.value = true;
   setHint('');
   try {
-    const res = await requestEmailCode(email.value.trim());
+    let intent: 'register' | 'login' | 'reset_password' = 'register';
+    if (mode.value === 'login') intent = 'login';
+    else if (mode.value === 'forgot') intent = 'reset_password';
+    else intent = 'register';
+
+    const res = await requestEmailCode(email.value.trim(), intent);
     setHint(res.message || '验证码已发送至邮箱，请查收', 'success');
     codeCountdown.value = 60;
     if (countdownTimer) clearInterval(countdownTimer);
@@ -137,24 +151,26 @@ async function handleSendCode() {
 
 /**
  * Per-field error strings. Only surface them once the user has typed
- * SOMETHING in the field — showing "邮箱格式不正确" on an empty box the
- * second the page loads is needlessly alarming.
+ * SOMETHING in the field.
  */
 const emailError = computed(() => {
   if (!email.value) return '';
   return emailValid.value ? '' : '邮箱格式不正确';
 });
 const codeError = computed(() => {
-  if (mode.value !== 'register' || !emailCode.value) return '';
+  const needsCode = mode.value === 'register' || mode.value === 'forgot' || (mode.value === 'login' && loginType.value === 'code');
+  if (!needsCode || !emailCode.value) return '';
   return codeValid.value ? '' : '验证码须为 6 位数字';
 });
 const passwordError = computed(() => {
-  if (!password.value) return '';
-  return passwordValid.value ? '' : '密码至少 8 位';
+  const needsPassword = mode.value === 'register' || mode.value === 'forgot' || (mode.value === 'login' && loginType.value === 'password');
+  if (!needsPassword || !password.value) return '';
+  return passwordValid.value ? '' : (mode.value === 'forgot' ? '新密码至少 8 位' : '密码至少 8 位');
 });
 const confirmError = computed(() => {
-  if (mode.value !== 'register' || !confirmPassword.value) return '';
-  return confirmValid.value ? '' : '两次输入的密码不一致';
+  const needsConfirm = mode.value === 'register' || mode.value === 'forgot';
+  if (!needsConfirm || !confirmPassword.value) return '';
+  return confirmValid.value ? '' : (mode.value === 'forgot' ? '两次输入的新密码不一致' : '两次输入的密码不一致');
 });
 const nicknameError = computed(() => {
   if (mode.value !== 'register' || !nickname.value) return '';
@@ -162,15 +178,56 @@ const nicknameError = computed(() => {
 });
 
 const canSubmit = computed(() => {
-  if (!agreedToTerms.value) return false;
-  if (!emailValid.value || !passwordValid.value) return false;
-  if (mode.value === 'register' && (!nicknameValid.value || !confirmValid.value || !codeValid.value)) return false;
-  return !submitting.value;
+  if (mode.value === 'login') {
+    if (!agreedToTerms.value) return false;
+    if (!emailValid.value) return false;
+    if (loginType.value === 'password') {
+      return passwordValid.value && !submitting.value;
+    } else {
+      return codeValid.value && !submitting.value;
+    }
+  }
+  if (mode.value === 'register') {
+    if (!agreedToTerms.value) return false;
+    if (!emailValid.value || !passwordValid.value || !confirmValid.value || !nicknameValid.value || !codeValid.value) return false;
+    return !submitting.value;
+  }
+  if (mode.value === 'forgot') {
+    if (!emailValid.value || !codeValid.value || !passwordValid.value || !confirmValid.value) return false;
+    return !submitting.value;
+  }
+  return false;
 });
 
 const submitLabel = computed(() => {
-  if (submitting.value) return mode.value === 'login' ? '登录中…' : '注册中…';
-  return mode.value === 'login' ? '登录' : '注册并进入';
+  if (submitting.value) {
+    if (mode.value === 'login') return '登录中…';
+    if (mode.value === 'register') return '注册中…';
+    return '重置中…';
+  }
+  if (mode.value === 'login') {
+    return loginType.value === 'password' ? '登录' : '免密登录';
+  }
+  if (mode.value === 'register') return '注册并进入';
+  return '重置密码并登录';
+});
+
+const heroTitleText = computed(() => {
+  if (mode.value === 'forgot') return '重置密码';
+  return mode.value === 'login' ? '欢迎回来' : '加入约球';
+});
+const heroSubtitleText = computed(() => {
+  if (mode.value === 'forgot') return '输入邮箱与验证码设置新密码';
+  if (mode.value === 'login') return loginType.value === 'password' ? '用邮箱和密码登录' : '邮箱验证码免密登录';
+  return '邮箱注册即可发起球局';
+});
+const passwordLabel = computed(() => {
+  if (mode.value === 'forgot') return '新密码';
+  return '密码';
+});
+const confirmLabel = computed(() => {
+  if (mode.value === 'forgot') return '确认新密码';
+  return '再次输入密码';
 });
 
 /**
@@ -190,6 +247,17 @@ function notify(text: string, tone: 'info' | 'error' | 'success' = 'error') {
   toast(text, tone);
 }
 
+function updateNavTitle() {
+  let title = '登录';
+  if (mode.value === 'forgot') title = '重置密码';
+  else if (mode.value === 'register') title = '注册';
+  else if (loginType.value === 'code') title = '免密登录';
+  else title = '登录';
+  if (typeof uni !== 'undefined' && typeof uni.setNavigationBarTitle === 'function') {
+    void uni.setNavigationBarTitle({ title });
+  }
+}
+
 function switchMode(next: Mode) {
   if (mode.value === next) return;
   mode.value = next;
@@ -199,6 +267,15 @@ function switchMode(next: Mode) {
   confirmPassword.value = '';
   emailCode.value = '';
   setHint('');
+  updateNavTitle();
+}
+
+function toggleLoginType() {
+  loginType.value = loginType.value === 'password' ? 'code' : 'password';
+  password.value = '';
+  emailCode.value = '';
+  setHint('');
+  updateNavTitle();
 }
 
 function getRedirectFromLocation() {
@@ -227,7 +304,7 @@ function applySession(session: SessionPayload, message: string) {
 }
 
 async function handleSubmit() {
-  if (!agreedToTerms.value) {
+  if (mode.value !== 'forgot' && !agreedToTerms.value) {
     setHint('请先勾选用户协议与隐私政策', 'error');
     return;
   }
@@ -235,37 +312,72 @@ async function handleSubmit() {
     setHint('请输入有效的邮箱地址', 'error');
     return;
   }
-  if (!passwordValid.value) {
-    setHint('密码至少 8 位', 'error');
-    return;
-  }
-  if (mode.value === 'register') {
+
+  if (mode.value === 'login') {
+    if (loginType.value === 'password') {
+      if (!passwordValid.value) {
+        setHint('密码至少 8 位', 'error');
+        return;
+      }
+    } else {
+      if (!codeValid.value) {
+        setHint('请输入 6 位数字验证码', 'error');
+        return;
+      }
+    }
+  } else if (mode.value === 'register') {
     if (!codeValid.value) {
       setHint('请输入 6 位验证码', 'error');
       return;
     }
-    if (!nicknameValid.value) {
-      setHint('昵称需要 2–20 个字符', 'error');
+    if (!passwordValid.value) {
+      setHint('密码至少 8 位', 'error');
       return;
     }
     if (!confirmValid.value) {
       setHint('两次输入的密码不一致', 'error');
       return;
     }
+    if (!nicknameValid.value) {
+      setHint('昵称需要 2–20 个字符', 'error');
+      return;
+    }
+  } else if (mode.value === 'forgot') {
+    if (!codeValid.value) {
+      setHint('请输入 6 位验证码', 'error');
+      return;
+    }
+    if (!passwordValid.value) {
+      setHint('新密码至少 8 位', 'error');
+      return;
+    }
+    if (!confirmValid.value) {
+      setHint('两次输入的新密码不一致', 'error');
+      return;
+    }
   }
+
   if (submitting.value) return;
   submitting.value = true;
   setHint('');
 
   try {
     if (mode.value === 'login') {
-      const payload: LoginEmailPayload = {
-        email: email.value.trim(),
-        password: password.value,
-      };
-      const session = await loginEmailUser(payload);
-      applySession(session, `欢迎回来，${session.user.nickname}`);
-    } else {
+      if (loginType.value === 'password') {
+        const payload: LoginEmailPayload = {
+          email: email.value.trim(),
+          password: password.value,
+        };
+        const session = await loginEmailUser(payload);
+        applySession(session, `欢迎回来，${session.user.nickname}`);
+      } else {
+        const session = await loginEmailWithCode({
+          email: email.value.trim(),
+          code: emailCode.value.trim(),
+        });
+        applySession(session, `欢迎回来，${session.user.nickname}`);
+      }
+    } else if (mode.value === 'register') {
       const payload: RegisterEmailPayload = {
         email: email.value.trim(),
         password: password.value,
@@ -278,37 +390,36 @@ async function handleSubmit() {
       };
       const session = await registerEmailUser(payload);
       applySession(session, `欢迎加入，${session.user.nickname}`);
+    } else if (mode.value === 'forgot') {
+      const session = await resetPasswordWithCode({
+        email: email.value.trim(),
+        code: emailCode.value.trim(),
+        newPassword: password.value,
+      });
+      applySession(session, '密码重置成功，已自动登录');
     }
   } catch (error) {
-    // uni.request rejects with the raw response object, not an Error —
-    // the useful info lives in statusCode + data.message.
     const resp = error as { statusCode?: number; data?: { message?: string } };
     const status = resp.statusCode ?? 0;
     const serverMessage = resp.data?.message ?? '';
-    if (mode.value === 'register') {
+    if (serverMessage && typeof serverMessage === 'string' && !['user_not_found', 'invalid_password'].includes(serverMessage)) {
+      setHint(serverMessage, 'error');
+    } else if (mode.value === 'register') {
       if (status === 409) {
         setHint('这个邮箱已经注册过了，去登录吧', 'error');
         mode.value = 'login';
-      } else if (status === 400) {
-        setHint('表单内容不符合要求，请检查后重试', 'error');
       } else {
         setHint('注册失败，请稍后再试', 'error');
       }
+    } else if (mode.value === 'forgot') {
+      setHint(serverMessage || '密码重置失败，请检查验证码', 'error');
     } else {
-      // Login: backend distinguishes `user_not_found` from
-      // `invalid_password` via the message field so we can show
-      // friendlier copy than a blanket "邮箱或密码错误".
-      if (status === 401 && serverMessage === 'user_not_found') {
-        setHint('该邮箱还没注册，请先去注册', 'error');
-        mode.value = 'register';
-      } else if (status === 401 && serverMessage === 'invalid_password') {
+      if (serverMessage === 'user_not_found') {
+        setHint('该邮箱尚未注册，请先注册', 'error');
+      } else if (serverMessage === 'invalid_password') {
         setHint('密码不正确，请重新输入', 'error');
-      } else if (status === 401) {
-        setHint('邮箱或密码不正确', 'error');
-      } else if (status === 400) {
-        setHint('表单内容不符合要求，请检查后重试', 'error');
       } else {
-        setHint('登录失败，请稍后再试', 'error');
+        setHint('登录失败，请稍后重试', 'error');
       }
     }
   } finally {
@@ -371,8 +482,8 @@ async function handleWechatLogin() {
         <text class="hero-logo-emoji">🏓</text>
       </view>
       <text class="hero-eyebrow">乒乓约球</text>
-      <text class="hero-title">{{ mode === 'login' ? '欢迎回来' : '加入约球' }}</text>
-      <text class="hero-subtitle">{{ mode === 'login' ? '用邮箱和密码登录' : '邮箱注册即可发起球局' }}</text>
+      <text class="hero-title">{{ heroTitleText }}</text>
+      <text class="hero-subtitle">{{ heroSubtitleText }}</text>
     </view>
 
     <view class="card">
@@ -382,8 +493,8 @@ async function handleWechatLogin() {
            form action never actually navigates. -->
       <form @submit.prevent="handleSubmit">
 
-      <!-- Mode tabs -->
-      <view class="tabs" data-testid="mode-tabs">
+      <!-- Mode tabs when not in forgot mode -->
+      <view v-if="mode !== 'forgot'" class="tabs" data-testid="mode-tabs">
         <view
           class="tab"
           :class="{ 'tab--active': mode === 'login' }"
@@ -396,6 +507,11 @@ async function handleWechatLogin() {
           data-testid="tab-register"
           @click="switchMode('register')"
         >注册</view>
+      </view>
+
+      <!-- Back bar when in forgot password -->
+      <view v-else class="forgot-top-bar">
+        <text class="forgot-back-btn" data-testid="forgot-back" @click="switchMode('login')">← 返回登录</text>
       </view>
 
       <view v-if="hasSession" class="session-card">
@@ -424,7 +540,7 @@ async function handleWechatLogin() {
       </view>
       <text v-if="emailError" class="field-error">{{ emailError }}</text>
 
-      <template v-if="mode === 'register'">
+      <template v-if="mode === 'register' || mode === 'forgot' || (mode === 'login' && loginType === 'code')">
         <text class="field-label">邮箱验证码</text>
         <view class="code-row">
           <view class="input-shell code-input-shell" :class="{ 'input-shell--error': codeError }">
@@ -453,27 +569,29 @@ async function handleWechatLogin() {
         <text v-if="codeError" class="field-error">{{ codeError }}</text>
       </template>
 
-      <text class="field-label">密码</text>
-      <view class="input-shell" :class="{ 'input-shell--error': passwordError }">
-        <text class="input-prefix">🔒</text>
-        <input
-          v-model="password"
-          class="input"
-          :type="showPassword ? 'text' : 'password'"
-          maxlength="100"
-          placeholder="至少 8 位"
-          :password="!showPassword"
-          :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
-          data-testid="login-password"
-        />
-        <text class="input-toggle" data-testid="toggle-password" @click="showPassword = !showPassword">
-          {{ showPassword ? '隐藏' : '显示' }}
-        </text>
-      </view>
-      <text v-if="passwordError" class="field-error">{{ passwordError }}</text>
+      <template v-if="mode === 'register' || mode === 'forgot' || (mode === 'login' && loginType === 'password')">
+        <text class="field-label">{{ passwordLabel }}</text>
+        <view class="input-shell" :class="{ 'input-shell--error': passwordError }">
+          <text class="input-prefix">🔒</text>
+          <input
+            v-model="password"
+            class="input"
+            :type="showPassword ? 'text' : 'password'"
+            maxlength="100"
+            :placeholder="mode === 'forgot' ? '新密码 (至少 8 位)' : '至少 8 位'"
+            :password="!showPassword"
+            :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+            data-testid="login-password"
+          />
+          <text class="input-toggle" data-testid="toggle-password" @click="showPassword = !showPassword">
+            {{ showPassword ? '隐藏' : '显示' }}
+          </text>
+        </view>
+        <text v-if="passwordError" class="field-error">{{ passwordError }}</text>
+      </template>
 
-      <template v-if="mode === 'register'">
-        <text class="field-label">再次输入密码</text>
+      <template v-if="mode === 'register' || mode === 'forgot'">
+        <text class="field-label">{{ confirmLabel }}</text>
         <view class="input-shell" :class="{ 'input-shell--error': confirmError }">
           <text class="input-prefix">🔒</text>
           <input
@@ -481,14 +599,16 @@ async function handleWechatLogin() {
             class="input"
             :type="showPassword ? 'text' : 'password'"
             maxlength="100"
-            placeholder="再输入一次"
+            :placeholder="mode === 'forgot' ? '确认新密码' : '再输入一次'"
             :password="!showPassword"
             autocomplete="new-password"
             data-testid="register-confirm"
           />
         </view>
         <text v-if="confirmError" class="field-error">{{ confirmError }}</text>
+      </template>
 
+      <template v-if="mode === 'register'">
         <text class="field-label">昵称</text>
         <view class="input-shell" :class="{ 'input-shell--error': nicknameError }">
           <input
@@ -500,17 +620,27 @@ async function handleWechatLogin() {
           />
         </view>
         <text v-if="nicknameError" class="field-error">{{ nicknameError }}</text>
-
-        <!-- City + level were previously chip pickers here. Removed in
-             v1.1 — city auto-detects from browser location (北京 fallback)
-             and level defaults to 入门. Both can be edited later from
-             the profile page. -->
       </template>
+
+      <!-- 登录辅助操作行: 切换验证码/密码登录 & 忘记密码 -->
+      <view v-if="mode === 'login'" class="form-sub-links">
+        <text class="sub-link" data-testid="toggle-login-type" @click="toggleLoginType">
+          {{ loginType === 'password' ? '📱 邮箱验证码登录' : '🔒 密码登录' }}
+        </text>
+        <text v-if="loginType === 'password'" class="sub-link sub-link--muted" data-testid="forgot-password-link" @click="switchMode('forgot')">
+          忘记密码？
+        </text>
+      </view>
+
+      <!-- 忘记密码底部链接 -->
+      <view v-if="mode === 'forgot'" class="forgot-footer-link">
+        <text class="sub-link sub-link--center" @click="switchMode('login')">想起密码了？返回登录</text>
+      </view>
 
       <!-- Consent: rolled by hand because uni-app's <checkbox> swallows
            taps in H5 silently, which is what made the previous build
            seem unresponsive when users tried to submit. -->
-      <view class="legal-consent" data-testid="login-consent" @click="agreedToTerms = !agreedToTerms">
+      <view v-if="mode !== 'forgot'" class="legal-consent" data-testid="login-consent" @click="agreedToTerms = !agreedToTerms">
         <view class="legal-check" :class="{ 'legal-check--on': agreedToTerms }">
           <text v-if="agreedToTerms" class="legal-check-tick">✓</text>
         </view>
@@ -670,6 +800,17 @@ async function handleWechatLogin() {
   color: $color-primary;
   box-shadow: 0 6rpx 14rpx rgba(255, 106, 61, 0.18);
 }
+.forgot-top-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+.forgot-back-btn {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: $color-primary;
+  cursor: pointer;
+}
 
 /* ---- Form fields ---- */
 .field-label {
@@ -743,6 +884,36 @@ async function handleWechatLogin() {
   margin: -10rpx 4rpx 8rpx;
   font-size: 22rpx;
   color: #c0461d;
+}
+.form-sub-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20rpx;
+  margin-bottom: 24rpx;
+  padding: 0 6rpx;
+}
+.sub-link {
+  font-size: 24rpx;
+  color: $color-primary;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+
+  &--muted {
+    color: $color-muted;
+  }
+  &--center {
+    display: block;
+    text-align: center;
+    margin-top: 24rpx;
+    font-size: 26rpx;
+    color: $color-primary;
+  }
+}
+.forgot-footer-link {
+  margin-top: 10rpx;
+  margin-bottom: 20rpx;
 }
 .input-prefix {
   color: $color-muted;
