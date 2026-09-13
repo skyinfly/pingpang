@@ -142,8 +142,14 @@ async function handleSendCode() {
       }
     }, 1000);
   } catch (err: unknown) {
-    const resp = err as { statusCode?: number; data?: { message?: string } };
-    setHint(resp.data?.message || '验证码发送失败，请稍后重试', 'error');
+    const resp = err as { statusCode?: number; data?: { message?: string | string[] } };
+    let msg = '验证码发送失败，请稍后重试';
+    if (Array.isArray(resp.data?.message)) {
+      msg = resp.data.message.join('; ');
+    } else if (typeof resp.data?.message === 'string') {
+      msg = resp.data.message;
+    }
+    setHint(msg, 'error');
   } finally {
     codeLoading.value = false;
   }
@@ -399,10 +405,16 @@ async function handleSubmit() {
       applySession(session, '密码重置成功，已自动登录');
     }
   } catch (error) {
-    const resp = error as { statusCode?: number; data?: { message?: string } };
+    const resp = error as { statusCode?: number; data?: { message?: string | string[] } };
     const status = resp.statusCode ?? 0;
-    const serverMessage = resp.data?.message ?? '';
-    if (serverMessage && typeof serverMessage === 'string' && !['user_not_found', 'invalid_password'].includes(serverMessage)) {
+    let serverMessage = '';
+    if (Array.isArray(resp.data?.message)) {
+      serverMessage = resp.data.message.join('; ');
+    } else if (typeof resp.data?.message === 'string') {
+      serverMessage = resp.data.message;
+    }
+
+    if (serverMessage && !['user_not_found', 'invalid_password'].includes(serverMessage)) {
       setHint(serverMessage, 'error');
     } else if (mode.value === 'register') {
       if (status === 409) {
@@ -415,9 +427,9 @@ async function handleSubmit() {
       setHint(serverMessage || '密码重置失败，请检查验证码', 'error');
     } else {
       if (serverMessage === 'user_not_found') {
-        setHint('该邮箱尚未注册，请先注册', 'error');
+        setHint('该邮箱尚未注册，请先注册或使用免密登录', 'error');
       } else if (serverMessage === 'invalid_password') {
-        setHint('密码不正确，请重新输入', 'error');
+        setHint('密码不正确，请重新输入或使用免密登录', 'error');
       } else {
         setHint('登录失败，请稍后重试', 'error');
       }

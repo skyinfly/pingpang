@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { LoginEmailDto } from './dto/login-email.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterEmailDto } from './dto/register-email.dto';
+import { RequestEmailCodeDto } from './dto/request-email-code.dto';
 import { RequestLoginCodeDto } from './dto/request-login-code.dto';
 import { VerifyLoginCodeDto } from './dto/verify-login-code.dto';
 import { WechatLoginDto } from './dto/wechat-login.dto';
@@ -62,6 +63,12 @@ export class AuthController {
   //   POST /auth/email/login     — verify password, return session token
   // No OTP / verification email — passwords carry the security here.
 
+  @Post('email/request-code')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  requestCodeEmail(@Body() body: RequestEmailCodeDto) {
+    return this.authService.requestEmailCode(body.email, body.intent);
+  }
+
   @Post('email/register')
   @Throttle({ default: AUTH_LIMITS.register })
   registerEmail(@Body() body: RegisterEmailDto) {
@@ -72,6 +79,18 @@ export class AuthController {
   @Throttle({ default: AUTH_LIMITS.verifyCode })
   loginEmail(@Body() body: LoginEmailDto) {
     return this.authService.loginEmailPassword(body);
+  }
+
+  @Post('email/login-code')
+  @Throttle({ default: AUTH_LIMITS.verifyCode })
+  loginEmailCode(@Body() body: { email: string; code: string }) {
+    return this.authService.loginEmailCode(body);
+  }
+
+  @Post('email/reset-password')
+  @Throttle({ default: AUTH_LIMITS.verifyCode })
+  resetPassword(@Body() body: { email: string; code: string; newPassword: string }) {
+    return this.authService.resetPasswordWithCode(body);
   }
 
   @Post('wechat-login')

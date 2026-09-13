@@ -1,4 +1,13 @@
-import { ConflictException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { DEV_LOGIN_CODE, isDevLoginEnabled } from './dev-auth';
 import { UsersService } from '../users/users.service';
@@ -6,6 +15,8 @@ import { issueSessionToken } from '../common/auth/app-token';
 import { OtpStore } from './otp-store';
 import { SMS_PROVIDER_TOKEN } from './sms/sms.module';
 import type { SmsProvider } from './sms/sms-provider';
+import { EMAIL_PROVIDER_TOKEN } from './email/email.module';
+import type { EmailProvider } from './email/email-provider';
 import { WechatClient } from './wechat/wechat-client';
 
 // bcrypt cost factor. 10 is the lowest mainstream-secure setting; benchmarks
@@ -25,6 +36,7 @@ export class AuthService {
     private readonly otpStore: OtpStore,
     private readonly wechatClient: WechatClient,
     @Inject(SMS_PROVIDER_TOKEN) private readonly smsProvider: SmsProvider,
+    @Inject(EMAIL_PROVIDER_TOKEN) private readonly emailProvider: EmailProvider,
   ) {}
 
   async loginWithWechat(code: string) {
@@ -170,14 +182,51 @@ export class AuthService {
   //  action.
   // ---------------------------------------------------------------------
 
+  async requestEmailCode(rawEmail: string, intent: 'register' | 'login' | 'reset_password' = 'register') {
+    const email = normalizeEmail(rawEmail);
+    const existing = await this.usersService.findEmailUserForAuth(email);
+    if (intent === 'register') {
+      if (existing) {
+        throw new ConflictException('该邮箱已注册，请直接登录');
+      }
+    } else if (intent === 'reset_password') {
+      if (!existing) {
+        throw new NotFoundException('该邮箱尚未注册，请先注册');
+      }
+    }
+
+    const code = this.otpStore.generateCode();
+    await this.otpStore.issueFor('email', email, code, 300);
+    try {
+      await this.emailProvider.send(email, code);
+      this.logger.log(`Email OTP sent to ${email} (intent=${intent})`);
+      return { ok: true, email };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : '';
+      this.logger.error(`Email send failed: ${errorMsg}`);
+      if (errorMsg && (errorMsg.includes('550') || errorMsg.includes('not found') || errorMsg.includes('EENVELOPE'))) {
+        throw new BadRequestException('邮箱地址不存在或无法投递，请检查邮箱拼写');
+      }
+      throw new ServiceUnavailableException('邮件发送失败，请稍后重试');
+    }
+  }
+
   async registerEmailPassword(payload: {
     email: string;
     password: string;
     nickname: string;
     city?: string;
     level?: 'beginner' | 'intermediate' | 'advanced';
+    code?: string;
   }) {
     const email = normalizeEmail(payload.email);
+    if (!payload.code) {
+      throw new BadRequestException('请输入邮箱验证码');
+    }
+    const valid = await this.otpStore.consumeFor('email', email, String(payload.code).trim());
+    if (!valid) {
+      throw new BadRequestException('验证码错误或已过期');
+    }
     const passwordHash = await bcrypt.hash(payload.password, BCRYPT_ROUNDS);
     try {
       const user = await this.usersService.createEmailUser({
@@ -200,12 +249,6 @@ export class AuthService {
     const email = normalizeEmail(payload.email);
     const row = await this.usersService.findEmailUserForAuth(email);
 
-    // Trade-off note: returning distinct "user not found" vs "wrong
-    // password" responses is friendlier UX but lets a hostile caller
-    // enumerate registered emails by spraying random ones. The product
-    // wants the friendlier copy on the H5, so we ship it — but still
-    // run bcrypt.compare in BOTH branches so the response timing is
-    // similar enough that someone can't enumerate by stopwatch alone.
     if (!row || !row.passwordHash) {
       const fakeHash = '$2b$10$abcdefghijklmnopqrstuuusEhT0pLB7nWBN8sBHvDmJh.7HRdC4eW';
       await bcrypt.compare(payload.password, fakeHash);
@@ -227,5 +270,57 @@ export class AuthService {
 
     const { passwordHash: _ignore, ...user } = row;
     return { token: issueSessionToken(user), user };
+  }
+
+  async loginEmailCode(payload: { email: string; code: string }) {
+    const email = normalizeEmail(payload.email);
+    if (!payload.code) {
+      throw new BadRequestException('请输入邮箱验证码');
+    }
+    const valid = await this.otpStore.consumeFor('email', email, String(payload.code).trim());
+    if (!valid) {
+      throw new BadRequestException('验证码错误或已过期');
+    }
+    const row = await this.usersService.findEmailUserForAuth(email);
+    if (!row) {
+      const defaultPassword = this.otpStore.generateCode() + this.otpStore.generateCode();
+      const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_ROUNDS);
+      const prefix = email.split('@')[0].slice(0, 8);
+      const user = await this.usersService.createEmailUser({
+        email,
+        passwordHash,
+        nickname: `球友_${prefix}`,
+        city: '上海',
+        level: 'beginner',
+      });
+      return { token: issueSessionToken(user), user, isNewUser: true };
+    }
+    const { passwordHash: _ignore, ...user } = row;
+    return { token: issueSessionToken(user), user };
+  }
+
+  async resetPasswordWithCode(payload: { email: string; code: string; newPassword: string }) {
+    const email = normalizeEmail(payload.email);
+    if (!payload.code) {
+      throw new BadRequestException('请输入邮箱验证码');
+    }
+    if (!payload.newPassword || payload.newPassword.length < 8) {
+      throw new BadRequestException('新密码长度至少需要 8 位');
+    }
+    const valid = await this.otpStore.consumeFor('email', email, String(payload.code).trim());
+    if (!valid) {
+      throw new BadRequestException('验证码错误或已过期');
+    }
+    const row = await this.usersService.findEmailUserForAuth(email);
+    if (!row) {
+      throw new NotFoundException('该邮箱尚未注册');
+    }
+    const passwordHash = await bcrypt.hash(payload.newPassword, BCRYPT_ROUNDS);
+    await (this.usersService as any).prisma.user.update({
+      where: { id: row.id },
+      data: { passwordHash },
+    });
+    const { passwordHash: _ignore, ...user } = row;
+    return { token: issueSessionToken(user), user, message: '密码重置成功' };
   }
 }
